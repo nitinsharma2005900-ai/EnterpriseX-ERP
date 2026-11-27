@@ -8,7 +8,7 @@ async function request(endpoint: string, options: RequestInit = {}, retry = true
   if (!headers.has('Content-Type') && options.body) headers.set('Content-Type', 'application/json');
   if (token) headers.set('Authorization', `Bearer ${token}`);
   const response = await fetch(`/api${endpoint}`, { ...options, headers, signal: options.signal || AbortSignal.timeout(60000) });
-  if (response.status === 401 && retry && !endpoint.startsWith('/auth/')) {
+  if (response.status === 401 && retry && !['/auth/login','/auth/refresh','/auth/logout','/auth/demo-accounts'].includes(endpoint.split('?')[0])) {
     const refreshToken = localStorage.getItem('enterprisex_refresh');
     if (refreshToken) {
       refreshing ||= fetch('/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken }) })

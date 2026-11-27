@@ -60,6 +60,8 @@ describe('Authentication and authorization', () => {
     expect((await api('warehouse','post','/inventory/adjust',{productId:product.id,warehouseId:other.id,quantityDelta:1,notes:'scope'})).status).toBe(403);
     const levels=(await api('warehouse','get','/inventory/stock-levels')).body.data;
     expect(levels.every((s:any)=>s.warehouseId===users.warehouse.warehouse.id)).toBe(true);
+    const products=(await api('warehouse','get','/inventory/products')).body.data;
+    expect(products.flatMap((p:any)=>p.stockLevels).every((s:any)=>s.warehouseId===users.warehouse.warehouse.id)).toBe(true);
   });
   it('hides records belonging to another organization',async()=>{
     const org=await prisma.organization.create({data:{name:'Isolated organization',code:key()}});

@@ -28,6 +28,12 @@ prisma.$use(async (params, next) => {
   if (scope && ['findMany', 'findFirst', 'findUnique', 'count', 'aggregate', 'groupBy', 'update', 'updateMany', 'delete', 'deleteMany'].includes(params.action)) {
     params.args.where = { ...params.args.where, AND: [params.args.where?.AND || {}, scope] };
   }
+  if (user && params.model === 'Product' && params.args.include) {
+    for (const relation of ['stockLevels','stockMovements']) if (params.args.include[relation]) {
+      const selection = params.args.include[relation] === true ? {} : params.args.include[relation];
+      params.args.include[relation] = { ...selection, where: { ...selection.where, warehouse: modelScope('Warehouse') } };
+    }
+  }
   if (user && ['Account','FinancialPeriod','Vendor','Customer','Product','SystemIncident','IntegrationJob'].includes(params.model || '') && ['create','upsert'].includes(params.action)) {
     const target = params.action === 'upsert' ? 'create' : 'data';
     params.args[target] = { ...params.args[target], organizationId: user.organizationId };
