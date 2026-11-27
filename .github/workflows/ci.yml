@@ -21,7 +21,7 @@ jobs:
           POSTGRES_PASSWORD: ci-database-password
           POSTGRES_DB: enterprisex
         ports: ['5432:5432']
-        options: --health-cmd 'pg_isready -U enterprisex' --health-interval 5s --health-timeout 3s --health-retries 15
+        options: --health-cmd "pg_isready -U enterprisex" --health-interval 5s --health-timeout 3s --health-retries 15
     env:
       DATABASE_URL: postgresql://enterprisex:ci-database-password@localhost:5432/enterprisex
       SERVICE_TOKEN: ci-service-token
@@ -64,7 +64,7 @@ jobs:
           POSTGRES_PASSWORD: ci-database-password
           POSTGRES_DB: enterprisex
         ports: ['5432:5432']
-        options: --health-cmd 'pg_isready -U enterprisex' --health-interval 5s --health-timeout 3s --health-retries 15
+        options: --health-cmd "pg_isready -U enterprisex" --health-interval 5s --health-timeout 3s --health-retries 15
       redis:
         image: redis:7-alpine
         ports: ['6379:6379']
