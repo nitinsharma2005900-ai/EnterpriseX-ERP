@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(t);
         localStorage.setItem('enterprisex_token', t);
         localStorage.setItem('enterprisex_user', JSON.stringify(u));
-        router.push('/dashboard');
+        window.location.assign('/dashboard');
       }
     } finally {
       setLoading(false);
