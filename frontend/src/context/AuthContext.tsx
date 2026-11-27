@@ -65,8 +65,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchApi('/auth/me').then(res => {
       setUser(res.data); setToken(localStorage.getItem('enterprisex_token'));
       localStorage.setItem('enterprisex_user', JSON.stringify(res.data));
-    }).catch(() => {
-      localStorage.removeItem('enterprisex_token'); localStorage.removeItem('enterprisex_refresh'); localStorage.removeItem('enterprisex_user');
+    }).catch((error) => {
+      if (error.status === 401 || error.status === 403) {
+        localStorage.removeItem('enterprisex_token'); localStorage.removeItem('enterprisex_refresh'); localStorage.removeItem('enterprisex_user');
+      }
     }).finally(() => setLoading(false));
   }, []);
 

@@ -14,7 +14,7 @@ async function request(endpoint: string, options: RequestInit = {}, retry = true
       refreshing ||= fetch('/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken }) })
         .then(async result => {
           const payload = await result.json();
-          if (!result.ok) throw new Error('Session expired; sign in again');
+          if (!result.ok) throw Object.assign(new Error('Session expired; sign in again'), { status: result.status });
           localStorage.setItem('enterprisex_token', payload.data.accessToken);
           localStorage.setItem('enterprisex_refresh', payload.data.refreshToken);
         }).finally(() => { refreshing = null; });
@@ -24,7 +24,7 @@ async function request(endpoint: string, options: RequestInit = {}, retry = true
   }
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
-    throw new Error(payload?.error?.message || payload?.detail || `Request failed (${response.status})`);
+    throw Object.assign(new Error(payload?.error?.message || payload?.detail || `Request failed (${response.status})`), { status: response.status });
   }
   return response;
 }
