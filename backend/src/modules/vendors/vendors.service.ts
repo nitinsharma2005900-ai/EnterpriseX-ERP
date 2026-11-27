@@ -1,9 +1,9 @@
-import { prisma } from '../../config/prisma';
+import { db, transaction } from '../../config/transaction';
 import { AppError } from '../../middleware/errorHandler';
 
 export class VendorsService {
   static async getVendors() {
-    return prisma.vendor.findMany({
+    return db().vendor.findMany({
       include: {
         _count: { select: { purchaseOrders: true, invoices: true } },
       },
@@ -12,7 +12,7 @@ export class VendorsService {
   }
 
   static async getVendorById(id: string) {
-    const vendor = await prisma.vendor.findUnique({
+    const vendor = await db().vendor.findUnique({
       where: { id },
       include: {
         purchaseOrders: { orderBy: { createdAt: 'desc' }, take: 10 },
@@ -34,10 +34,10 @@ export class VendorsService {
     currency?: string;
     rating?: number;
   }) {
-    const existing = await prisma.vendor.findUnique({ where: { code: data.code } });
+    const existing = await db().vendor.findUnique({ where: { code: data.code } });
     if (existing) throw new AppError(`Vendor code ${data.code} already exists`, 409, 'VENDOR_EXISTS');
 
-    return prisma.vendor.create({
+    return db().vendor.create({
       data: {
         code: data.code,
         name: data.name,
@@ -54,7 +54,7 @@ export class VendorsService {
   }
 
   static async updateVendor(id: string, data: any) {
-    return prisma.vendor.update({
+    return db().vendor.update({
       where: { id },
       data,
     });

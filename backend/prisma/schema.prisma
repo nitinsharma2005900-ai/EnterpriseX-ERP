@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -74,6 +74,7 @@ model User {
   warehouseId    String?
   email          String            @unique
   passwordHash   String
+  tokenVersion   Int               @default(0)
   fullName       String
   role           String            // ERP_ADMINISTRATOR, FINANCE_OFFICER, PROCUREMENT_OFFICER, WAREHOUSE_OPERATOR, SALES_USER, DEPARTMENT_MANAGER
   approvalLimit  Float             @default(0.0)
@@ -98,6 +99,7 @@ model User {
 // -----------------------------------------------------------------------------
 
 model Account {
+  organizationId String?
   id           String        @id @default(uuid())
   code         String        @unique // e.g. 1010, 1200, 2010, 4010, 5010
   name         String
@@ -112,6 +114,7 @@ model Account {
 }
 
 model FinancialPeriod {
+  organizationId String?
   id             String         @id @default(uuid())
   name           String         @unique // e.g. "FY2026-Q1", "2026-03"
   startDate      DateTime
@@ -138,6 +141,7 @@ model JournalEntry {
   createdAt     DateTime      @default(now())
   period        FinancialPeriod @relation(fields: [periodId], references: [id])
   lines         JournalLine[]
+  @@index([periodId, date])
 }
 
 model JournalLine {
@@ -156,6 +160,7 @@ model JournalLine {
 // -----------------------------------------------------------------------------
 
 model Vendor {
+  organizationId String?
   id             String          @id @default(uuid())
   code           String          @unique // e.g. "VND-001"
   name           String
@@ -175,6 +180,7 @@ model Vendor {
 }
 
 model Customer {
+  organizationId String?
   id                 String       @id @default(uuid())
   code               String       @unique // e.g. "CUST-001"
   name               String
@@ -193,6 +199,7 @@ model Customer {
 }
 
 model Product {
+  organizationId String?
   id                String              @id @default(uuid())
   sku               String              @unique // e.g. "SKU-IND-100"
   name              String
@@ -244,6 +251,7 @@ model StockMovement {
   createdAt      DateTime  @default(now())
   product        Product   @relation(fields: [productId], references: [id])
   warehouse      Warehouse @relation(fields: [warehouseId], references: [id])
+  @@index([warehouseId, date])
 }
 
 // -----------------------------------------------------------------------------
@@ -274,6 +282,7 @@ model PurchaseOrder {
   items                PurchaseOrderItem[]
   goodsReceipts        GoodsReceipt[]
   invoices             Invoice[]
+  @@index([departmentId, status])
 }
 
 model PurchaseOrderItem {
@@ -289,6 +298,7 @@ model PurchaseOrderItem {
   purchaseOrder    PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
   product          Product       @relation(fields: [productId], references: [id])
   grnItems         GoodsReceiptItem[]
+  @@unique([poId, productId])
 }
 
 model GoodsReceipt {
@@ -308,6 +318,7 @@ model GoodsReceipt {
   receivedBy     User               @relation(fields: [receivedById], references: [id])
   items          GoodsReceiptItem[]
   invoices       Invoice[]
+  @@index([warehouseId, receivedDate])
 }
 
 model GoodsReceiptItem {
@@ -330,6 +341,7 @@ model GoodsReceiptItem {
 // -----------------------------------------------------------------------------
 
 model SalesOrder {
+  warehouseId      String?
   id               String           @id @default(uuid())
   soNumber         String           @unique // e.g. "SO-2026-001"
   customerId       String
@@ -357,6 +369,7 @@ model SalesOrderItem {
   totalAmount       Float
   salesOrder        SalesOrder @relation(fields: [soId], references: [id], onDelete: Cascade)
   product           Product    @relation(fields: [productId], references: [id])
+  @@unique([soId, productId])
 }
 
 // -----------------------------------------------------------------------------
@@ -391,6 +404,7 @@ model Invoice {
   goodsReceipt    GoodsReceipt? @relation(fields: [grnId], references: [id])
   items           InvoiceItem[]
   payments        Payment[]
+  @@index([type, status])
 }
 
 model InvoiceItem {
@@ -460,6 +474,7 @@ model AuditLog {
   success       Boolean  @default(true)
   failureReason String?
   user          User?    @relation(fields: [userId], references: [id])
+  @@index([entityType, timestamp])
 }
 
 model SystemIncident {
@@ -488,4 +503,49 @@ model SystemNotification {
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
   user      User?    @relation(fields: [userId], references: [id])
+}
+
+model AuthSession {
+  id String @id @default(uuid())
+  userId String
+  tokenHash String @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId])
+}
+
+model WorkflowRun {
+  id String @id @default(uuid())
+  idempotencyKey String @unique
+  fingerprint String
+  userId String
+  workflow String
+  status String
+  result String
+  createdAt DateTime @default(now())
+}
+
+model IntegrationJob {
+  id String @id @default(uuid())
+  idempotencyKey String @unique
+  type String
+  payload String
+  status String @default("QUEUED")
+  attempts Int @default(0)
+  error String?
+  result String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, createdAt])
+}
+
+model StoredDocument {
+  id String @id @default(uuid())
+  entityType String
+  entityId String
+  content String
+  checksum String
+  createdAt DateTime @default(now())
+  @@unique([entityType, entityId])
 }

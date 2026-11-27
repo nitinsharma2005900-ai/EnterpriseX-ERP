@@ -5,16 +5,15 @@ export class IntegrationsController {
   static async sendEmail(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { to, subject, body } = req.body;
-      const data = await IntegrationsService.sendEmail(to, subject, body);
+      const data = await IntegrationsService.sendEmail(to, subject, body, req.body.idempotencyKey);
       res.json({ success: true, data });
     } catch (err) {
       next(err);
     }
   }
 
-  static getEmailQueue(req: Request, res: Response): void {
-    const data = IntegrationsService.getEmailQueue();
-    res.json({ success: true, data });
+  static async getEmailQueue(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try { const data = await IntegrationsService.getEmailQueue(); res.json({ success: true, data }); } catch (error) { next(error); }
   }
 
   static async simulateVendorDispatch(req: Request, res: Response, next: NextFunction): Promise<void> {

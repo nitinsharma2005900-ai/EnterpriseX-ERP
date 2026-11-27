@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { fetchApi } from '../lib/api';
 import { X, AlertTriangle, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface NotificationModalProps {
@@ -9,31 +10,10 @@ interface NotificationModalProps {
 }
 
 export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [error, setError] = useState('');
+  useEffect(() => { if (isOpen) { void fetchApi('/notifications').then(r => setAlerts(r.data)).catch(e => setError(e.message)); } }, [isOpen]);
   if (!isOpen) return null;
-
-  const mockAlerts = [
-    {
-      id: '1',
-      title: 'Low Stock Alert: Precision Optical Sensor Array',
-      desc: 'Warehouse CDC stock level is 80 units (approaching safety buffer). Automatic reorder recommended.',
-      type: 'WARNING',
-      time: '15m ago',
-    },
-    {
-      id: '2',
-      title: 'Pending PO Approval: PO-2026-0002',
-      desc: 'David Chen requested purchase order for $33,000.00 requiring Department Manager authorization.',
-      type: 'INFO',
-      time: '1h ago',
-    },
-    {
-      id: '3',
-      title: 'General Ledger Integrity Verified',
-      desc: 'Automated diagnostic scanner validated all debits and credits balance across all 12 chart accounts.',
-      type: 'SUCCESS',
-      time: '3h ago',
-    },
-  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end bg-charcoal/40 backdrop-blur-sm p-4">
@@ -46,7 +26,9 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
         </div>
 
         <div className="mt-3 space-y-2.5">
-          {mockAlerts.map((a) => (
+          {error && <p role="alert" className="text-amber">{error}</p>}
+          {!error && alerts.length === 0 && <p className="text-xs">No pending notifications.</p>}
+          {alerts.map((a) => (
             <div
               key={a.id}
               className="p-3 rounded-xl bg-ivory dark:bg-charcoal-50 border border-sage/20 dark:border-charcoal-100 flex gap-3 text-xs"
@@ -57,7 +39,7 @@ export function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
               <div>
                 <p className="font-bold text-charcoal dark:text-ivory leading-tight">{a.title}</p>
                 <p className="text-[11px] text-charcoal/70 dark:text-ivory/70 mt-1">{a.desc}</p>
-                <span className="text-[9px] text-charcoal/40 dark:text-ivory/40 mt-1 block">{a.time}</span>
+                <span className="text-[9px] text-charcoal/40 dark:text-ivory/40 mt-1 block">{new Date(a.time).toLocaleString()}</span>
               </div>
             </div>
           ))}

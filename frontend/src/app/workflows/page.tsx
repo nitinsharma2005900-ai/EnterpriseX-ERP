@@ -1,5 +1,6 @@
 'use client';
 
+import { useAuth } from '../../context/AuthContext';
 import React, { useState } from 'react';
 import {
   GitFork,
@@ -16,6 +17,7 @@ import { fetchApi } from '../../lib/api';
 import { formatCurrency } from '../../lib/utils';
 
 export default function WorkflowsPage() {
+  const { user } = useAuth();
   const [running, setRunning] = useState(false);
   const [simulateFailureAt, setSimulateFailureAt] = useState<'NONE' | 'APPROVAL' | 'RECEIPT' | 'INVOICE' | 'PAYMENT'>('NONE');
   const [p2pResult, setP2PResult] = useState<any>(null);

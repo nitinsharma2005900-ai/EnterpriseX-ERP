@@ -2,34 +2,34 @@
 # Syntax: path owner
 
 # Core architecture and governance
-*                           @EnterpriseX-Core-Team
+*                           @nitinsharma2005900-ai
 
 # Finance & General Ledger module (Assessment 02, 03, 05)
-/backend/src/modules/accounts/  @EnterpriseX-Finance-Leads
-/backend/src/modules/billing/   @EnterpriseX-Finance-Leads
-/python-service/app/services/finance_engine.py @EnterpriseX-Finance-Leads
+/backend/src/modules/accounts/  @nitinsharma2005900-ai
+/backend/src/modules/billing/   @nitinsharma2005900-ai
+/python-service/app/services/finance_engine.py @nitinsharma2005900-ai
 
 # Procurement & Purchasing (Assessment 02, 07)
-/backend/src/modules/procurement/ @EnterpriseX-Procurement-Leads
-/backend/src/modules/vendors/     @EnterpriseX-Procurement-Leads
+/backend/src/modules/procurement/ @nitinsharma2005900-ai
+/backend/src/modules/vendors/     @nitinsharma2005900-ai
 
 # Inventory & Warehousing (Assessment 02, 07)
-/backend/src/modules/inventory/   @EnterpriseX-SupplyChain-Leads
-/backend/src/modules/receipt/     @EnterpriseX-SupplyChain-Leads
+/backend/src/modules/inventory/   @nitinsharma2005900-ai
+/backend/src/modules/receipt/     @nitinsharma2005900-ai
 
 # Database schema migrations & data dictionary (Assessment 03, 10)
-/backend/prisma/schema.prisma    @EnterpriseX-Database-Architects
-/backend/prisma/migrations/      @EnterpriseX-Database-Architects
+/backend/prisma/schema.prisma    @nitinsharma2005900-ai
+/backend/prisma/migrations/      @nitinsharma2005900-ai
 
 # Security, Authorization & Audit (Assessment 04)
-/backend/src/middleware/auth.ts  @EnterpriseX-Security-Team
-/backend/src/middleware/rbac.ts  @EnterpriseX-Security-Team
-/backend/src/modules/audit/      @EnterpriseX-Security-Team
+/backend/src/middleware/auth.ts  @nitinsharma2005900-ai
+/backend/src/middleware/rbac.ts  @nitinsharma2005900-ai
+/backend/src/modules/audit/      @nitinsharma2005900-ai
 
 # Python analytics & reports (Assessment 05, 06)
-/python-service/                 @EnterpriseX-Data-Team
+/python-service/                 @nitinsharma2005900-ai
 
 # CI/CD and Infrastructure (Assessment 09, 11, 14)
-/.github/workflows/              @EnterpriseX-DevOps-Team
-/docker/                         @EnterpriseX-DevOps-Team
-/docker-compose*.yml             @EnterpriseX-DevOps-Team
+/.github/workflows/              @nitinsharma2005900-ai
+/docker/                         @nitinsharma2005900-ai
+/docker-compose*.yml             @nitinsharma2005900-ai

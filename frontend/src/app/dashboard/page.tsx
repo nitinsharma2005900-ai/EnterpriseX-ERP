@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [analytics, setAnalytics] = useState<any>(null);
   const [recentPOs, setRecentPOs] = useState<any[]>([]);
   const [stockAlerts, setStockAlerts] = useState<any[]>([]);
+  const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function DashboardPage() {
           setStockAlerts(alerts.slice(0, 4));
         }
       })
-      .catch((err) => console.error(err))
+      .catch((err) => setErrorMsg(err.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -68,20 +69,8 @@ export default function DashboardPage() {
     );
   }
 
-  const kpis = analytics || {
-    revenue: 120000,
-    expenses: 90000,
-    net_profit: 30000,
-    accounts_receivable: 45000,
-    accounts_payable: 35000,
-    inventory_valuation: 85000,
-    cash_flow_health: 'HEALTHY',
-    dso_days: 136.9,
-    dpo_days: 212.9,
-    inventory_turnover_ratio: 0.71,
-    top_vendors_by_spend: [],
-    monthly_trend: [],
-  };
+  if (errorMsg || !analytics) return <div role="alert" className="p-4 rounded-xl text-amber bg-amber/10">{errorMsg || "Unable to load report"}</div>;
+  const kpis = analytics;
 
   return (
     <div className="space-y-8">

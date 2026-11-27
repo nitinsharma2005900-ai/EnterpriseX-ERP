@@ -49,14 +49,14 @@ class NumberedCanvas(canvas.Canvas):
         self.saveState()
         self.setFont("Helvetica-Bold", 8)
         self.setFillColor(CHARCOAL)
-        
+
         # Header
         self.setStrokeColor(SOFT_SAGE)
         self.setLineWidth(0.5)
         self.line(40, 755, 572, 755)
         self.drawString(40, 762, "ENTERPRISEX ERP - TECHNICAL ARCHITECTURE & ASSESSMENT HANDBOOK")
         self.drawRightString(572, 762, "PROJECT 08")
-        
+
         # Footer
         self.line(40, 45, 572, 45)
         self.setFont("Helvetica", 8)

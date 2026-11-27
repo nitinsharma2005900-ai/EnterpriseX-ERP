@@ -1,3 +1,4 @@
+import { validate, z, id, text, money, positive, rate, orderItem, items } from '../../middleware/validate';
 import { Router } from 'express';
 import { ProcurementController } from './procurement.controller';
 import { authenticate } from '../../middleware/auth';
@@ -11,17 +12,17 @@ router.get('/purchase-orders/:id', ProcurementController.getPurchaseOrderById);
 router.post(
   '/purchase-orders',
   requireRole(Roles.ADMIN, Roles.PROCUREMENT, Roles.DEPT_MANAGER),
-  ProcurementController.createPurchaseOrder
+  validate(z.object({ vendorId: id, departmentId: id.optional(), expectedDeliveryDate: z.coerce.date().optional(), terms: text.optional(), items: items(orderItem) })), ProcurementController.createPurchaseOrder
 );
 router.patch(
   '/purchase-orders/:id/approve',
   requireRole(Roles.ADMIN, Roles.FINANCE, Roles.DEPT_MANAGER),
-  ProcurementController.approvePurchaseOrder
+  validate(z.object({ comments: text.optional() })), ProcurementController.approvePurchaseOrder
 );
 router.patch(
   '/purchase-orders/:id/reject',
   requireRole(Roles.ADMIN, Roles.FINANCE, Roles.DEPT_MANAGER),
-  ProcurementController.rejectPurchaseOrder
+  validate(z.object({ comments: text })), ProcurementController.rejectPurchaseOrder
 );
 
 export default router;

@@ -1,4 +1,5 @@
 'use client';
+import { queryClient } from '../lib/query';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -59,17 +60,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {});
 
-    // Check existing token
     const storedToken = localStorage.getItem('enterprisex_token');
-    const storedUser = localStorage.getItem('enterprisex_user');
-
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {}
-    }
-    setLoading(false);
+    if (!storedToken) { setLoading(false); return; }
+    fetchApi('/auth/me').then(res => {
+      setUser(res.data); setToken(storedToken);
+      localStorage.setItem('enterprisex_user', JSON.stringify(res.data));
+    }).catch(() => {
+      localStorage.removeItem('enterprisex_token'); localStorage.removeItem('enterprisex_refresh'); localStorage.removeItem('enterprisex_user');
+    }).finally(() => setLoading(false));
   }, []);
 
   const login = async (email: string, password = 'EnterpriseX2026!') => {
@@ -83,6 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.success) {
         const u = res.data.user;
         const t = res.data.accessToken;
+        queryClient.clear();
+        localStorage.setItem('enterprisex_refresh', res.data.refreshToken);
         setUser(u);
         setToken(t);
         localStorage.setItem('enterprisex_token', t);
@@ -99,6 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    void fetchApi('/auth/logout', { method: 'POST' }).catch(() => {});
+    queryClient.clear();
+    localStorage.removeItem('enterprisex_refresh');
     setUser(null);
     setToken(null);
     localStorage.removeItem('enterprisex_token');

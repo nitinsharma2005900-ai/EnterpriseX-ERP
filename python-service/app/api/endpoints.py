@@ -77,31 +77,26 @@ def profit_and_loss(payload: FinancialStatementsRequest):
 # Assessment 06: Executive Analytics Endpoints
 # ------------------------------------------------------------------------------
 
-@router.get("/analytics/executive-summary", response_model=ExecutiveAnalyticsResponse, tags=["Business Analytics"])
-def get_executive_summary(
-    revenue: float = Query(default=142000.00),
-    cogs: float = Query(default=52000.00),
-    expenses: float = Query(default=91000.00),
-    accounts_receivable: float = Query(default=38500.00),
-    accounts_payable: float = Query(default=24800.00),
-    inventory_valuation: float = Query(default=68400.00),
-):
-    """
-    Assessment 06: High-efficiency consolidated executive analytics with DSO, DPO,
-    working capital, cash flow health indicator, and vendor spend breakdown.
-    """
-    return AnalyticsEngine.compute_executive_metrics(
-        revenue=Decimal(str(revenue)),
-        cogs=Decimal(str(cogs)),
-        expenses=Decimal(str(expenses)),
-        accounts_receivable=Decimal(str(accounts_receivable)),
-        accounts_payable=Decimal(str(accounts_payable)),
-        inventory_valuation=Decimal(str(inventory_valuation)),
-    )
+from pydantic import BaseModel, Field
+from typing import Any
+
+class MetricsInput(BaseModel):
+    revenue: Decimal
+    cogs: Decimal
+    expenses: Decimal
+    accounts_receivable: Decimal
+    accounts_payable: Decimal
+    inventory_valuation: Decimal
+    top_vendors: list[dict[str, Any]] = Field(default_factory=list)
+    monthly_trend: list[dict[str, Any]] = Field(default_factory=list)
+
+@router.post("/analytics/executive-summary", response_model=ExecutiveAnalyticsResponse, tags=["Business Analytics"])
+def executive_summary(payload: MetricsInput):
+    return AnalyticsEngine.compute_executive_metrics(**payload.model_dump())
 
 
 @router.get("/finance/benchmark", tags=["Finance Processing"])
-def run_benchmark(iterations: int = Query(default=5000, le=50000)):
+def run_benchmark(iterations: int = Query(default=5000, ge=1, le=50000)):
     """
     Assessment 05: Benchmark requirement - validates deterministic performance on high volume.
     """

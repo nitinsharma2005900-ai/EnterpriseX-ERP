@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { ShieldCheck, Filter, RefreshCw, Eye, ArrowRight } from 'lucide-react';
 import { fetchApi } from '../../lib/api';
 import { formatDate } from '../../lib/utils';
@@ -13,7 +13,8 @@ export default function AuditPage() {
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadData = () => {
+  const [errorMsg, setErrorMsg] = useState('');
+  const loadData = useCallback(() => {
     setLoading(true);
     let url = '/audit?';
     if (selectedAction) url += `action=${selectedAction}&`;
@@ -23,16 +24,17 @@ export default function AuditPage() {
       .then((res) => {
         if (res.success) setLogs(res.data);
       })
-      .catch((err) => console.error(err))
+      .catch((err) => setErrorMsg(err.message))
       .finally(() => setLoading(false));
-  };
+  }, [selectedAction, selectedEntity]);
 
   useEffect(() => {
     loadData();
-  }, [selectedAction, selectedEntity]);
+  }, [loadData]);
 
   return (
     <div className="space-y-6">
+      {errorMsg && <p role="alert" className="text-amber">{errorMsg}</p>}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -129,7 +131,7 @@ export default function AuditPage() {
       {/* State Inspector Drawer */}
       {selectedLog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-xl rounded-3xl bg-ivory-50 dark:bg-charcoal border border-sage/40 dark:border-charcoal-50 shadow-2xl p-6">
+          <div className="w-full max-h-[90vh] overflow-y-auto max-w-xl rounded-3xl bg-ivory-50 dark:bg-charcoal border border-sage/40 dark:border-charcoal-50 shadow-2xl p-6">
             <h3 className="text-base font-bold text-charcoal dark:text-ivory mb-1">
               Audit Event State Payload
             </h3>

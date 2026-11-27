@@ -15,7 +15,7 @@ from app.models.schemas import (
 )
 from app.services.finance_engine import FinanceEngine
 
-client = TestClient(app)
+client = TestClient(app, headers={"x-service-token": __import__("os").environ.get("SERVICE_TOKEN", "local-development-service-token")})
 
 
 # ------------------------------------------------------------------------------

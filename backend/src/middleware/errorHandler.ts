@@ -20,12 +20,12 @@ export function errorHandler(
   err: any,
   req: Request,
   res: Response,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   next: NextFunction
 ): void {
-  const statusCode = err.statusCode || (err.status ? Number(err.status) : 500);
-  const code = err.code || 'INTERNAL_SERVER_ERROR';
-  const message = err.message || 'An unexpected error occurred';
+  const databaseStatus = ({ P2002: 409, P2003: 400, P2025: 404, P2034: 409 } as Record<string, number>)[err.code];
+  const statusCode = databaseStatus || err.statusCode || (err.status ? Number(err.status) : 500);
+  const code = databaseStatus ? ({ P2002: 'DUPLICATE_RECORD', P2003: 'INVALID_REFERENCE', P2025: 'NOT_FOUND', P2034: 'CONCURRENT_UPDATE' } as Record<string, string>)[err.code] : (err.code || 'INTERNAL_SERVER_ERROR');
+  const message = databaseStatus ? ({ P2002: 'A record with this identifier already exists', P2003: 'Referenced record does not exist or is still in use', P2025: 'Record not found', P2034: 'Concurrent update; retry the request' } as Record<string, string>)[err.code] : statusCode >= 500 ? 'An unexpected server error occurred' : err.message || 'Invalid request';
 
   logger.error(message, {
     requestId: req.id,

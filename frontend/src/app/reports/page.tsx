@@ -11,12 +11,13 @@ import {
   FileSpreadsheet,
   FileCode,
 } from 'lucide-react';
-import { fetchApi } from '../../lib/api';
+import { fetchApi, downloadApi } from '../../lib/api';
 import { formatCurrency } from '../../lib/utils';
 
 export default function ReportsPage() {
   const [reportData, setReportData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'TRIAL_BALANCE' | 'BALANCE_SHEET' | 'PROFIT_LOSS'>('TRIAL_BALANCE');
+  const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,30 +25,20 @@ export default function ReportsPage() {
       .then((res) => {
         if (res.success) setReportData(res.data);
       })
-      .catch((err) => console.error(err))
+      .catch((err) => setErrorMsg(err.message))
       .finally(() => setLoading(false));
   }, []);
 
   const handleExport = (format: 'csv' | 'json') => {
-    window.open(`http://localhost:5000/api/integrations/accounting/export?format=${format}`, '_blank');
+    void downloadApi(`/integrations/accounting/export?format=${format}`, `EnterpriseX-General-Ledger.${format}`).catch(error => setErrorMsg(error.message));
   };
 
   if (loading) {
     return <div className="p-8 text-center text-sm font-semibold text-charcoal/50 animate-pulse">Computing deterministic financial reports...</div>;
   }
 
-  const tb = reportData || {
-    period: 'FY2026-Q1',
-    total_assets: 500000,
-    total_liabilities: 43500,
-    total_equity: 406500,
-    total_revenue: 120000,
-    total_expense: 90000,
-    total_debits: 590000,
-    total_credits: 590000,
-    is_balanced: true,
-    accounts: [],
-  };
+  if (errorMsg || !reportData) return <div role="alert" className="p-4 rounded-xl text-amber bg-amber/10">{errorMsg || "Unable to load report"}</div>;
+  const tb = reportData;
 
   const assets = tb.accounts?.filter((a: any) => a.category === 'ASSET') || [];
   const liabilities = tb.accounts?.filter((a: any) => a.category === 'LIABILITY') || [];

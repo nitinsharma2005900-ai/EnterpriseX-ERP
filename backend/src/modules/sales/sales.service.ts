@@ -1,4 +1,5 @@
-import { prisma } from '../../config/prisma';
+import { assert, documentNumber, postJournal } from '../../utils/business';
+import { db, transaction } from '../../config/transaction';
 import { AppError } from '../../middleware/errorHandler';
 import { round } from '../../utils/decimal';
 import { recordAuditLog } from '../../middleware/audit';
@@ -8,7 +9,7 @@ export class SalesService {
     const where: any = {};
     if (customerId) where.customerId = customerId;
 
-    return prisma.salesOrder.findMany({
+    return db().salesOrder.findMany({
       where,
       include: {
         customer: true,
@@ -20,7 +21,7 @@ export class SalesService {
   }
 
   static async getSalesOrderById(id: string) {
-    const so = await prisma.salesOrder.findUnique({
+    const so = await db().salesOrder.findUnique({
       where: { id },
       include: {
         customer: true,
@@ -47,11 +48,14 @@ export class SalesService {
     userId: string,
     requestId?: string
   ) {
+    return transaction(async () => {
     if (!data.items || data.items.length === 0) {
       throw new AppError('Sales order must contain at least one line item', 400, 'NO_ITEMS');
     }
 
-    const customer = await prisma.customer.findUnique({ where: { id: data.customerId } });
+    assert(new Set(data.items.map(i => i.productId)).size === data.items.length, 'Duplicate product lines are not allowed');
+    assert(await db().product.count({ where: { id: { in: data.items.map(i => i.productId) }, active: true } }) === data.items.length, 'Active products not found', 'NOT_FOUND', 404);
+    const customer = await db().customer.findUnique({ where: { id: data.customerId } });
     if (!customer) throw new AppError('Customer not found', 404, 'NOT_FOUND');
     if (customer.status !== 'ACTIVE') throw new AppError('Customer is suspended or inactive', 400, 'CUSTOMER_INACTIVE');
 
@@ -89,10 +93,10 @@ export class SalesService {
       );
     }
 
-    const count = await prisma.salesOrder.count();
-    const soNumber = `SO-2026-${String(count + 1).padStart(4, '0')}`;
+    const count = await db().salesOrder.count();
+    const soNumber = documentNumber('SO');
 
-    const so = await prisma.salesOrder.create({
+    const so = await db().salesOrder.create({
       data: {
         soNumber,
         customerId: data.customerId,
@@ -112,20 +116,21 @@ export class SalesService {
     await recordAuditLog({
       userId,
       action: 'CREATE',
-      entityType: 'PO', // or SO
+      entityType: 'SO',
       entityId: so.id,
       afterState: { soNumber: so.soNumber, totalAmount, status: so.status },
       requestId,
     });
 
     return so;
+    });
   }
 
   /**
    * Assessment 07 & 12: Stock Reservation for Order-to-Cash workflow
    */
   static async reserveStock(soId: string, warehouseId: string, userId: string, requestId?: string) {
-    return prisma.$transaction(async (tx) => {
+    return transaction(async (tx) => {
       const so = await tx.salesOrder.findUnique({
         where: { id: soId },
         include: { items: true },
@@ -135,6 +140,8 @@ export class SalesService {
         throw new AppError(`Cannot reserve stock for order in status '${so.status}'`, 400, 'INVALID_STATUS');
       }
 
+      const warehouse = await tx.warehouse.findUnique({ where: { id: warehouseId } });
+      assert(warehouse?.active, 'Warehouse is outside your scope or inactive', 'FORBIDDEN', 403);
       for (const item of so.items) {
         const stock = await tx.stockLevel.findUnique({
           where: {
@@ -169,7 +176,7 @@ export class SalesService {
 
       const updated = await tx.salesOrder.update({
         where: { id: soId },
-        data: { status: 'RESERVED' },
+        data: { status: 'RESERVED', warehouseId },
         include: { items: { include: { product: true } }, customer: true },
       });
 
@@ -190,16 +197,19 @@ export class SalesService {
    * Assessment 07 & 12: Fulfill Sales Order and deduct stock
    */
   static async fulfillSalesOrder(soId: string, warehouseId: string, userId: string, requestId?: string) {
-    return prisma.$transaction(async (tx) => {
+    return transaction(async (tx) => {
       const so = await tx.salesOrder.findUnique({
         where: { id: soId },
         include: { items: true },
       });
       if (!so) throw new AppError('Sales order not found', 404, 'NOT_FOUND');
-      if (so.status !== 'RESERVED' && so.status !== 'CONFIRMED') {
+      if (so.status !== 'RESERVED') {
         throw new AppError(`Order must be RESERVED or CONFIRMED before fulfillment. Status: ${so.status}`, 400, 'INVALID_STATUS');
       }
 
+      assert(so.warehouseId === warehouseId, 'Fulfillment warehouse must match the reservation', 'WAREHOUSE_MISMATCH');
+      assert(await tx.warehouse.findUnique({ where: { id: warehouseId } }), 'Warehouse is outside your scope', 'FORBIDDEN', 403);
+      let totalCost = 0;
       for (const item of so.items) {
         const stock = await tx.stockLevel.findUnique({
           where: {
@@ -217,6 +227,7 @@ export class SalesService {
           throw new AppError(`Negative stock prohibited on fulfillment. Available on hand: ${currentOnHand}`, 400, 'NEGATIVE_STOCK');
         }
 
+        totalCost = round(totalCost + item.quantityOrdered * stock!.averageCost);
         const newOnHand = round(currentOnHand - item.quantityOrdered);
         const newReserved = round(Math.max(0, currentReserved - item.quantityOrdered));
 
@@ -236,7 +247,7 @@ export class SalesService {
         const smCount = await tx.stockMovement.count();
         await tx.stockMovement.create({
           data: {
-            movementNumber: `SM-OUT-${String(smCount + 1).padStart(5, '0')}`,
+            movementNumber: documentNumber('SM-OUT'),
             productId: item.productId,
             warehouseId,
             type: 'OUT_SALE',
@@ -261,6 +272,7 @@ export class SalesService {
         include: { customer: true, items: true },
       });
 
+      if (totalCost) await postJournal('SO', so.id, `Cost of goods shipped ${so.soNumber}`, userId, [{ code: '5010', debit: totalCost, credit: 0 }, { code: '1400', debit: 0, credit: totalCost }]);
       await recordAuditLog({
         userId,
         action: 'UPDATE',

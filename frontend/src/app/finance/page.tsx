@@ -1,5 +1,6 @@
 'use client';
 
+import { useAuth } from '../../context/AuthContext';
 import React, { useEffect, useState } from 'react';
 import {
   Landmark,
@@ -12,11 +13,13 @@ import {
   ArrowRight,
   ShieldAlert,
 } from 'lucide-react';
+import { MasterData } from '../../components/MasterData';
 import { fetchApi } from '../../lib/api';
 import { formatCurrency, formatDate } from '../../lib/utils';
 import { StatusBadge } from '../../components/StatusBadge';
 
 export default function FinancePage() {
+  const { user } = useAuth();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [periods, setPeriods] = useState<any[]>([]);
   const [journals, setJournals] = useState<any[]>([]);
@@ -109,6 +112,7 @@ export default function FinancePage() {
 
   return (
     <div className="space-y-6">
+      <details className="rounded-2xl border border-sage/30 p-4"><summary className="font-bold cursor-pointer text-emerald">Manage accounts</summary><div className="mt-4"><MasterData kind="accounts" embedded/></div></details>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -207,7 +211,7 @@ export default function FinancePage() {
       {/* Post Journal Entry Modal */}
       {journalModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-ivory-50 dark:bg-charcoal border border-sage/40 dark:border-charcoal-50 shadow-2xl p-6">
+          <div className="w-full max-h-[90vh] overflow-y-auto max-w-2xl rounded-3xl bg-ivory-50 dark:bg-charcoal border border-sage/40 dark:border-charcoal-50 shadow-2xl p-6">
             <h3 className="text-base font-bold text-charcoal dark:text-ivory mb-1">
               Post Double-Entry Journal Entry
             </h3>
@@ -216,6 +220,7 @@ export default function FinancePage() {
             </p>
 
             <form onSubmit={handlePostJournal} className="space-y-4">
+              {errorMsg && <p role="alert" className="text-amber text-xs">{errorMsg}</p>}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-charcoal/80 dark:text-ivory/80 uppercase mb-1">

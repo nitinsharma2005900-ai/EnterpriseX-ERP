@@ -1,5 +1,6 @@
 'use client';
 
+import { useAuth } from '../../context/AuthContext';
 import React, { useEffect, useState } from 'react';
 import {
   Package,
@@ -11,11 +12,13 @@ import {
   History,
   CheckCircle,
 } from 'lucide-react';
+import { MasterData } from '../../components/MasterData';
 import { fetchApi } from '../../lib/api';
 import { formatCurrency, formatDate } from '../../lib/utils';
 import { StatusBadge } from '../../components/StatusBadge';
 
 export default function InventoryPage() {
+  const { user } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [movements, setMovements] = useState<any[]>([]);
@@ -78,6 +81,7 @@ export default function InventoryPage() {
 
   return (
     <div className="space-y-6">
+      <details className="rounded-2xl border border-sage/30 p-4"><summary className="font-bold cursor-pointer text-emerald">Manage products</summary><div className="mt-4"><MasterData kind="products" embedded/></div></details>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -234,13 +238,14 @@ export default function InventoryPage() {
       {/* Adjust Stock Modal */}
       {adjustModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-3xl bg-ivory-50 dark:bg-charcoal border border-sage/40 dark:border-charcoal-50 shadow-2xl p-6">
+          <div className="w-full max-h-[90vh] overflow-y-auto max-w-md rounded-3xl bg-ivory-50 dark:bg-charcoal border border-sage/40 dark:border-charcoal-50 shadow-2xl p-6">
             <h3 className="text-base font-bold text-charcoal dark:text-ivory mb-1">Stock Level Adjustment</h3>
             <p className="text-xs text-charcoal/60 dark:text-ivory/60 mb-4">
               Physical inventory cycle recount. System strictly enforces non-negative stock invariants.
             </p>
 
             <form onSubmit={handleAdjustStock} className="space-y-4">
+              {errorMsg && <p role="alert" className="text-amber text-xs">{errorMsg}</p>}
               <div>
                 <label className="block text-xs font-bold text-charcoal/80 dark:text-ivory/80 uppercase mb-1">
                   Product / SKU

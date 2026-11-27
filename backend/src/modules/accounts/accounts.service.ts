@@ -1,11 +1,11 @@
-import { prisma } from '../../config/prisma';
+import { db, transaction } from '../../config/transaction';
 import { AppError } from '../../middleware/errorHandler';
 import { round, isEqual } from '../../utils/decimal';
 import { recordAuditLog } from '../../middleware/audit';
 
 export class AccountsService {
   static async getChartOfAccounts() {
-    return prisma.account.findMany({
+    return db().account.findMany({
       orderBy: { code: 'asc' },
     });
   }
@@ -17,12 +17,12 @@ export class AccountsService {
     subcategory?: string;
     currency?: string;
   }) {
-    const existing = await prisma.account.findUnique({ where: { code: data.code } });
+    const existing = await db().account.findUnique({ where: { code: data.code } });
     if (existing) {
       throw new AppError(`Account code ${data.code} already exists`, 409, 'ACCOUNT_EXISTS');
     }
 
-    return prisma.account.create({
+    return db().account.create({
       data: {
         code: data.code,
         name: data.name,
@@ -35,7 +35,7 @@ export class AccountsService {
   }
 
   static async getFinancialPeriods() {
-    return prisma.financialPeriod.findMany({
+    return db().financialPeriod.findMany({
       orderBy: { startDate: 'desc' },
     });
   }
@@ -45,12 +45,12 @@ export class AccountsService {
     startDate: Date;
     endDate: Date;
   }) {
-    const existing = await prisma.financialPeriod.findUnique({ where: { name: data.name } });
+    const existing = await db().financialPeriod.findUnique({ where: { name: data.name } });
     if (existing) {
       throw new AppError(`Financial period ${data.name} already exists`, 409, 'PERIOD_EXISTS');
     }
 
-    return prisma.financialPeriod.create({
+    return db().financialPeriod.create({
       data: {
         name: data.name,
         startDate: data.startDate,
@@ -61,13 +61,13 @@ export class AccountsService {
   }
 
   static async closeFinancialPeriod(periodId: string, userId: string) {
-    const period = await prisma.financialPeriod.findUnique({ where: { id: periodId } });
+    const period = await db().financialPeriod.findUnique({ where: { id: periodId } });
     if (!period) throw new AppError('Period not found', 404, 'PERIOD_NOT_FOUND');
     if (period.status === 'CLOSED' || period.status === 'LOCKED') {
       throw new AppError(`Period is already ${period.status}`, 400, 'PERIOD_ALREADY_CLOSED');
     }
 
-    return prisma.financialPeriod.update({
+    return db().financialPeriod.update({
       where: { id: periodId },
       data: {
         status: 'CLOSED',
@@ -92,8 +92,9 @@ export class AccountsService {
       credit: number;
     }>;
   }, requestId?: string) {
+    return transaction(async () => {
     // 1. Period verification
-    const period = await prisma.financialPeriod.findUnique({ where: { id: data.periodId } });
+    const period = await db().financialPeriod.findUnique({ where: { id: data.periodId } });
     if (!period) throw new AppError('Financial period not found', 404, 'PERIOD_NOT_FOUND');
     if (period.status !== 'OPEN') {
       throw new AppError(
@@ -103,6 +104,8 @@ export class AccountsService {
       );
     }
 
+    const postingDate = data.date || new Date();
+    if (postingDate < period.startDate || postingDate > period.endDate) throw new AppError('Posting date is outside the financial period', 400, 'DATE_OUTSIDE_PERIOD');
     // 2. Validate lines existence
     if (!data.lines || data.lines.length < 2) {
       throw new AppError('Journal entry must have at least two transaction lines.', 400, 'INVALID_JOURNAL');
@@ -142,7 +145,7 @@ export class AccountsService {
     }
 
     // 4. Atomic database transaction
-    return prisma.$transaction(async (tx) => {
+    return transaction(async (tx) => {
       const entry = await tx.journalEntry.create({
         data: {
           entryNumber: data.entryNumber,
@@ -171,7 +174,8 @@ export class AccountsService {
         const credit = round(Number(line.credit || 0));
         const account = await tx.account.findUnique({ where: { id: line.accountId } });
 
-        if (account) {
+        if (!account?.active) throw new AppError('Account not found or inactive', 400, 'INVALID_ACCOUNT');
+      if (account) {
           // In normal accounting:
           // Assets & Expenses increase with debit, decrease with credit
           // Liabilities, Equity & Revenue increase with credit, decrease with debit
@@ -200,6 +204,7 @@ export class AccountsService {
 
       return entry;
     });
+    });
   }
 
   static async getJournalEntries(query?: { periodId?: string; referenceType?: string }) {
@@ -207,7 +212,7 @@ export class AccountsService {
     if (query?.periodId) where.periodId = query.periodId;
     if (query?.referenceType) where.referenceType = query.referenceType;
 
-    return prisma.journalEntry.findMany({
+    return db().journalEntry.findMany({
       where,
       include: {
         period: true,
@@ -218,9 +223,10 @@ export class AccountsService {
   }
 
   static async getGeneralLedger() {
-    const accounts = await prisma.account.findMany({
+    const accounts = await db().account.findMany({
       include: {
         journalLines: {
+          where: { journalEntry: { status: 'POSTED' } },
           include: { journalEntry: true },
           orderBy: { journalEntry: { date: 'asc' } },
         },

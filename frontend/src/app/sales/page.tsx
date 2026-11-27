@@ -1,5 +1,6 @@
 'use client';
 
+import { useAuth } from '../../context/AuthContext';
 import React, { useEffect, useState } from 'react';
 import {
   BadgeDollarSign,
@@ -16,6 +17,7 @@ import { formatCurrency, formatDate } from '../../lib/utils';
 import { StatusBadge } from '../../components/StatusBadge';
 
 export default function SalesPage() {
+  const { user } = useAuth();
   const [salesOrders, setSalesOrders] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -201,7 +203,7 @@ export default function SalesPage() {
                           Reserve Stock
                         </button>
                       )}
-                      {so.status === 'RESERVED' && (
+                      {so.status === 'RESERVED' && ['ERP_ADMINISTRATOR','WAREHOUSE_OPERATOR'].includes(user?.role || '') && (
                         <button
                           onClick={() => handleFulfillOrder(so.id)}
                           className="px-2.5 py-1 rounded-lg bg-emerald hover:bg-emerald-600 text-ivory font-bold text-[11px] shadow-sm transition"
@@ -227,13 +229,14 @@ export default function SalesPage() {
       {/* New SO Modal */}
       {createModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-xl rounded-3xl bg-ivory-50 dark:bg-charcoal border border-sage/40 dark:border-charcoal-50 shadow-2xl p-6">
+          <div className="w-full max-h-[90vh] overflow-y-auto max-w-xl rounded-3xl bg-ivory-50 dark:bg-charcoal border border-sage/40 dark:border-charcoal-50 shadow-2xl p-6">
             <h3 className="text-base font-bold text-charcoal dark:text-ivory mb-1">Book New Sales Order</h3>
             <p className="text-xs text-charcoal/60 dark:text-ivory/60 mb-4">
               Commercial agreement with automated customer credit threshold verification.
             </p>
 
             <form onSubmit={handleCreateSO} className="space-y-4">
+              {errorMsg && <p role="alert" className="text-amber text-xs">{errorMsg}</p>}
               <div>
                 <label className="block text-xs font-bold text-charcoal/80 dark:text-ivory/80 uppercase mb-1">
                   Customer Account

@@ -15,10 +15,6 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        onClose();
-      }
       if (e.key === 'Escape') {
         onClose();
       }

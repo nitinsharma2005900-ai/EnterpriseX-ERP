@@ -187,7 +187,7 @@ class FinanceEngine:
             for idx, l_tx in enumerate(unmatched_ledger):
                 # Check reference match or amount match
                 ref_match = (
-                    b_tx.reference and l_tx.reference and 
+                    b_tx.reference and l_tx.reference and
                     b_tx.reference.strip().lower() == l_tx.reference.strip().lower()
                 )
                 amount_diff = abs(b_tx.amount - l_tx.amount)

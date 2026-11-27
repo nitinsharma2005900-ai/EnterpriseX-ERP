@@ -1,417 +1,93 @@
-import { prisma } from '../../config/prisma';
-import { AppError } from '../../middleware/errorHandler';
-import { round, isEqual } from '../../utils/decimal';
+import { db, transaction } from '../../config/transaction';
+import { round } from '../../utils/decimal';
+import { documentNumber, assert, postJournal } from '../../utils/business';
 import { recordAuditLog } from '../../middleware/audit';
-import { AccountsService } from '../accounts/accounts.service';
 
 export class BillingService {
-  static async getInvoices(type?: 'ACCOUNTS_PAYABLE' | 'ACCOUNTS_RECEIVABLE', status?: string) {
-    const where: any = {};
-    if (type) where.type = type;
-    if (status) where.status = status;
-
-    return prisma.invoice.findMany({
-      where,
-      include: {
-        vendor: true,
-        customer: true,
-        purchaseOrder: true,
-        salesOrder: true,
-        goodsReceipt: true,
-        payments: true,
-        items: true,
-      },
-      orderBy: { issueDate: 'desc' },
-    });
+  static getInvoices(type?: string, status?: string) {
+    return db().invoice.findMany({ where: { ...(type ? { type } : {}), ...(status ? { status } : {}) },
+      include: { vendor: true, customer: true, purchaseOrder: true, salesOrder: true, goodsReceipt: true, payments: true, items: true }, orderBy: { issueDate: 'desc' } });
   }
-
   static async getInvoiceById(id: string) {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
-      include: {
-        vendor: true,
-        customer: true,
-        purchaseOrder: { include: { items: true } },
-        salesOrder: { include: { items: true } },
-        goodsReceipt: { include: { items: true } },
-        payments: { orderBy: { paymentDate: 'desc' } },
-        items: { include: { product: true } },
-      },
-    });
-    if (!invoice) throw new AppError('Invoice not found', 404, 'NOT_FOUND');
+    const invoice = await db().invoice.findUnique({ where: { id }, include: { vendor: true, customer: true, purchaseOrder: { include: { items: true } }, salesOrder: { include: { items: true } }, goodsReceipt: { include: { items: true } }, payments: true, items: { include: { product: true } } } });
+    assert(invoice, 'Invoice not found', 'NOT_FOUND', 404);
     return invoice;
   }
-
-  /**
-   * Assessment 07: Create AP Invoice with 3-Way Matching (PO, GRN, Invoice)
-   */
-  static async createAPInvoice(
-    data: {
-      poId: string;
-      grnId?: string;
-      invoiceNumber?: string;
-      dueDate?: Date;
-      taxAmount?: number;
-      items: Array<{
-        productId?: string;
-        description: string;
-        quantity: number;
-        unitPrice: number;
-        taxRate?: number;
-      }>;
-    },
-    userId: string,
-    requestId?: string
-  ) {
-    return prisma.$transaction(async (tx) => {
-      const po = await tx.purchaseOrder.findUnique({
-        where: { id: data.poId },
-        include: { vendor: true, items: true, goodsReceipts: { include: { items: true } } },
-      });
-
-      if (!po) throw new AppError('Purchase order not found', 404, 'PO_NOT_FOUND');
-
-      // Duplicate invoice check
-      const existingInv = await tx.invoice.findFirst({
-        where: {
-          poId: data.poId,
-          type: 'ACCOUNTS_PAYABLE',
-          status: { not: 'VOIDED' },
-        },
-      });
-
-      if (existingInv) {
-        throw new AppError(
-          `An active accounts payable invoice (${existingInv.invoiceNumber}) already exists for ${po.poNumber}. Duplicate invoice posting prevented.`,
-          409,
-          'DUPLICATE_INVOICE'
-        );
+  static async createAPInvoice(data: { poId: string; grnId?: string; invoiceNumber?: string; dueDate?: Date; items: Array<{ productId?: string; description: string; quantity: number; unitPrice: number; taxRate?: number }> }, userId: string, requestId?: string) {
+    return transaction(async tx => {
+      const po = await tx.purchaseOrder.findUnique({ where: { id: data.poId }, include: { items: true, vendor: true, goodsReceipts: { include: { items: true } } } });
+      assert(po, 'Purchase order not found', 'PO_NOT_FOUND', 404);
+      const existing = await tx.invoice.findFirst({ where: { poId: po.id, type: 'ACCOUNTS_PAYABLE', status: { not: 'VOIDED' } } });
+      assert(!existing, 'An active invoice already exists for this purchase order', 'DUPLICATE_INVOICE', 409);
+      assert(po.status === 'COMPLETED', 'All purchase order goods must be received before invoicing', 'RECEIPT_REQUIRED');
+      const receipt = data.grnId ? po.goodsReceipts.find(g => g.id === data.grnId) : po.goodsReceipts[0];
+      assert(receipt, 'Receipt must belong to this purchase order', 'INVALID_RECEIPT');
+      assert(data.items.length === po.items.length && new Set(data.items.map(i => i.productId)).size === data.items.length, 'Invoice lines must match every PO line once', 'THREE_WAY_MISMATCH');
+      for (const item of data.items) {
+        const ordered = po.items.find(i => i.productId === item.productId);
+        const received = po.goodsReceipts.filter(g => g.status === 'POSTED').flatMap(g => g.items).filter(i => i.productId === item.productId).reduce((s, i) => s + i.quantityAccepted, 0);
+        assert(ordered && round(item.quantity) === round(ordered.quantityOrdered) && round(received) >= round(item.quantity) && round(item.unitPrice) === round(ordered.unitPrice) && (item.taxRate ?? ordered.taxRate) === ordered.taxRate, 'Invoice quantity, price or tax does not match PO and accepted receipts', 'THREE_WAY_MISMATCH');
       }
-
-      let subtotal = 0;
-      let totalTax = 0;
-
-      const lineItemsData = data.items.map((item) => {
-        const qty = round(Number(item.quantity));
-        const price = round(Number(item.unitPrice));
-        const rate = item.taxRate !== undefined ? Number(item.taxRate) : 0.10;
-        const lineSub = round(qty * price);
-        const lineTax = round(lineSub * rate);
-        subtotal = round(subtotal + lineSub);
-        totalTax = round(totalTax + lineTax);
-
-        return {
-          productId: item.productId,
-          description: item.description,
-          quantity: qty,
-          unitPrice: price,
-          taxRate: rate,
-          amount: round(lineSub + lineTax),
-        };
-      });
-
-      const grandTotal = round(subtotal + totalTax);
-
-      // Assessment 07 & 12: 3-Way Matching Check
-      // Compares PO Total, GRN Received Quantities, and Invoice Total
-      let matchStatus = 'MATCHED';
-      const tolerance = 0.05; // 5% tolerance
-      const poDiff = Math.abs(grandTotal - po.totalAmount) / (po.totalAmount || 1);
-
-      if (poDiff > tolerance) {
-        matchStatus = 'DISCREPANCY';
-      }
-
-      const invCount = await tx.invoice.count();
-      const invoiceNumber = data.invoiceNumber || `INV-AP-2026-${String(invCount + 1).padStart(4, '0')}`;
-      const dueDate = data.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-
-      const invoice = await tx.invoice.create({
-        data: {
-          invoiceNumber,
-          type: 'ACCOUNTS_PAYABLE',
-          vendorId: po.vendorId,
-          poId: po.id,
-          grnId: data.grnId || po.goodsReceipts[0]?.id || null,
-          status: 'ISSUED',
-          subtotal,
-          taxAmount: totalTax,
-          totalAmount: grandTotal,
-          paidAmount: 0,
-          remainingAmount: grandTotal,
-          dueDate,
-          matchStatus,
-          items: {
-            create: lineItemsData,
-          },
-        },
-        include: { vendor: true, items: true, purchaseOrder: true },
-      });
-
-      // Update vendor balance
-      await tx.vendor.update({
-        where: { id: po.vendorId },
-        data: { balance: round(po.vendor.balance + grandTotal) },
-      });
-
-      await recordAuditLog({
-        userId,
-        action: 'CREATE',
-        entityType: 'INVOICE',
-        entityId: invoice.id,
-        afterState: { invoiceNumber: invoice.invoiceNumber, grandTotal, matchStatus },
-        requestId,
-      });
-
+      const invoice = await tx.invoice.create({ data: {
+        invoiceNumber: data.invoiceNumber || documentNumber('INV-AP'), type: 'ACCOUNTS_PAYABLE', vendorId: po.vendorId, poId: po.id, grnId: receipt.id,
+        subtotal: po.netAmount, taxAmount: po.taxAmount, totalAmount: po.totalAmount, remainingAmount: po.totalAmount,
+        dueDate: data.dueDate || new Date(Date.now() + 30 * 86400000), matchStatus: 'MATCHED',
+        items: { create: data.items.map(i => ({ ...i, taxRate: po.items.find(p => p.productId === i.productId)!.taxRate, amount: po.items.find(p => p.productId === i.productId)!.totalAmount })) },
+      }, include: { vendor: true, items: true, purchaseOrder: true } });
+      await tx.vendor.update({ where: { id: po.vendorId }, data: { balance: { increment: po.totalAmount } } });
+      await postJournal('INVOICE', invoice.id, `Vendor invoice ${invoice.invoiceNumber}`, userId, [
+        { code: '2020', debit: po.netAmount, credit: 0 }, { code: '1300', debit: po.taxAmount, credit: 0 }, { code: '2010', debit: 0, credit: po.totalAmount },
+      ]);
+      await recordAuditLog({ userId, action: 'CREATE', entityType: 'INVOICE', entityId: invoice.id, afterState: { totalAmount: invoice.totalAmount, matchStatus: 'MATCHED' }, requestId });
       return invoice;
     });
   }
-
-  /**
-   * Assessment 07: Create AR Invoice from Sales Order
-   */
   static async createARInvoice(soId: string, userId: string, requestId?: string) {
-    return prisma.$transaction(async (tx) => {
-      const so = await tx.salesOrder.findUnique({
-        where: { id: soId },
-        include: { customer: true, items: { include: { product: true } } },
-      });
-
-      if (!so) throw new AppError('Sales order not found', 404, 'SO_NOT_FOUND');
-
-      const existingInv = await tx.invoice.findFirst({
-        where: { soId: so.id, type: 'ACCOUNTS_RECEIVABLE' },
-      });
-      if (existingInv) throw new AppError(`Invoice already created for this sales order: ${existingInv.invoiceNumber}`, 409, 'DUPLICATE_INVOICE');
-
-      const invCount = await tx.invoice.count();
-      const invoiceNumber = `INV-AR-2026-${String(invCount + 1).padStart(4, '0')}`;
-      const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-      const invoice = await tx.invoice.create({
-        data: {
-          invoiceNumber,
-          type: 'ACCOUNTS_RECEIVABLE',
-          customerId: so.customerId,
-          soId: so.id,
-          status: 'ISSUED',
-          subtotal: so.netAmount,
-          taxAmount: so.taxAmount,
-          totalAmount: so.totalAmount,
-          paidAmount: 0,
-          remainingAmount: so.totalAmount,
-          dueDate,
-          matchStatus: 'MATCHED',
-          items: {
-            create: so.items.map((i) => ({
-              productId: i.productId,
-              description: `Fulfillment of ${i.product.name} (${i.product.sku})`,
-              quantity: i.quantityOrdered,
-              unitPrice: i.unitPrice,
-              taxRate: i.taxRate,
-              amount: i.totalAmount,
-            })),
-          },
-        },
-        include: { customer: true, items: true },
-      });
-
-      // Update customer outstanding balance
-      await tx.customer.update({
-        where: { id: so.customerId },
-        data: { outstandingBalance: round(so.customer.outstandingBalance + so.totalAmount) },
-      });
-
-      await tx.salesOrder.update({
-        where: { id: soId },
-        data: { status: 'INVOICED' },
-      });
-
-      await recordAuditLog({
-        userId,
-        action: 'CREATE',
-        entityType: 'INVOICE',
-        entityId: invoice.id,
-        afterState: { invoiceNumber: invoice.invoiceNumber, totalAmount: invoice.totalAmount },
-        requestId,
-      });
-
+    return transaction(async tx => {
+      const so = await tx.salesOrder.findUnique({ where: { id: soId }, include: { items: { include: { product: true } }, customer: true } });
+      assert(so, 'Sales order not found', 'SO_NOT_FOUND', 404);
+      const existing = await tx.invoice.findFirst({ where: { soId } });
+      assert(!existing, 'Invoice already created for this sales order', 'DUPLICATE_INVOICE', 409);
+      assert(so.status === 'FULFILLED', 'Sales order must be fulfilled before invoicing', 'INVALID_STATUS');
+      assert(so.customer.outstandingBalance + so.totalAmount <= so.customer.creditLimit, 'Customer credit limit exceeded', 'CREDIT_LIMIT_EXCEEDED');
+      const invoice = await tx.invoice.create({ data: {
+        invoiceNumber: documentNumber('INV-AR'), type: 'ACCOUNTS_RECEIVABLE', customerId: so.customerId, soId, subtotal: so.netAmount, taxAmount: so.taxAmount,
+        totalAmount: so.totalAmount, remainingAmount: so.totalAmount, dueDate: new Date(Date.now() + 30 * 86400000),
+        items: { create: so.items.map(i => ({ productId: i.productId, description: i.product.name, quantity: i.quantityOrdered, unitPrice: i.unitPrice, taxRate: i.taxRate, amount: i.totalAmount })) },
+      }, include: { customer: true, items: true } });
+      await tx.customer.update({ where: { id: so.customerId }, data: { outstandingBalance: { increment: so.totalAmount } } });
+      await tx.salesOrder.update({ where: { id: soId }, data: { status: 'INVOICED' } });
+      await postJournal('INVOICE', invoice.id, `Customer invoice ${invoice.invoiceNumber}`, userId, [
+        { code: '1200', debit: so.totalAmount, credit: 0 }, { code: '4010', debit: 0, credit: so.netAmount }, { code: '2030', debit: 0, credit: so.taxAmount },
+      ]);
+      await recordAuditLog({ userId, action: 'CREATE', entityType: 'INVOICE', entityId: invoice.id, afterState: { totalAmount: invoice.totalAmount }, requestId });
       return invoice;
     });
   }
-
-  /**
-   * Assessment 07, 08 & 12: Record Payment with Idempotency Key and Auto General Ledger Posting!
-   */
-  static async recordPayment(
-    data: {
-      invoiceId: string;
-      amount: number;
-      paymentMethod?: string;
-      referenceNumber?: string;
-      idempotencyKey: string;
-      notes?: string;
-    },
-    userId: string,
-    requestId?: string
-  ) {
-    // 1. Idempotency Check: Prevent duplicate payment charging
-    const existingPayment = await prisma.payment.findUnique({
-      where: { idempotencyKey: data.idempotencyKey },
-      include: { invoice: true },
-    });
-
-    if (existingPayment) {
-      // Idempotent return: Return already executed payment without executing again!
-      return {
-        payment: existingPayment,
-        isDuplicateSuppressed: true,
-        message: 'Idempotent request recognized. Returning existing payment without duplicate posting.',
-      };
-    }
-
-    return prisma.$transaction(async (tx) => {
-      const invoice = await tx.invoice.findUnique({
-        where: { id: data.invoiceId },
-        include: { vendor: true, customer: true },
-      });
-
-      if (!invoice) throw new AppError('Invoice not found', 404, 'INVOICE_NOT_FOUND');
-      if (invoice.status === 'PAID') {
-        throw new AppError('Invoice is already fully paid', 400, 'ALREADY_PAID');
+  static async recordPayment(data: { invoiceId: string; amount: number; paymentMethod?: string; referenceNumber?: string; idempotencyKey: string; notes?: string }, userId: string, requestId?: string) {
+    return transaction(async tx => {
+      const existing = await tx.payment.findUnique({ where: { idempotencyKey: data.idempotencyKey } });
+      if (existing) {
+        assert(existing.invoiceId === data.invoiceId && existing.amount === round(data.amount) && existing.paymentMethod === (data.paymentMethod || 'BANK_TRANSFER'), 'Idempotency key was used with a different payment', 'IDEMPOTENCY_CONFLICT', 409);
+        return { payment: existing, isDuplicateSuppressed: true, message: 'Existing settlement returned' };
       }
-
-      const paymentAmount = round(Number(data.amount));
-      if (paymentAmount <= 0) {
-        throw new AppError('Payment amount must be greater than zero', 400, 'INVALID_AMOUNT');
-      }
-
-      if (paymentAmount > round(invoice.remainingAmount + 0.01)) {
-        throw new AppError(
-          `Payment amount ($${paymentAmount.toFixed(2)}) exceeds remaining invoice balance ($${invoice.remainingAmount.toFixed(2)})`,
-          400,
-          'OVERPAYMENT'
-        );
-      }
-
-      const pCount = await tx.payment.count();
-      const paymentNumber = `PAY-2026-${String(pCount + 1).padStart(4, '0')}`;
-
-      // Create Payment Record
-      const payment = await tx.payment.create({
-        data: {
-          paymentNumber,
-          invoiceId: invoice.id,
-          amount: paymentAmount,
-          paymentMethod: data.paymentMethod || 'BANK_TRANSFER',
-          referenceNumber: data.referenceNumber,
-          status: 'COMPLETED',
-          idempotencyKey: data.idempotencyKey,
-          notes: data.notes,
-        },
-      });
-
-      // Update invoice remaining balances and status
-      const newPaidAmount = round(invoice.paidAmount + paymentAmount);
-      const newRemaining = round(Math.max(0, invoice.totalAmount - newPaidAmount));
-      const newStatus = newRemaining <= 0.01 ? 'PAID' : 'PARTIALLY_PAID';
-
-      await tx.invoice.update({
-        where: { id: invoice.id },
-        data: {
-          paidAmount: newPaidAmount,
-          remainingAmount: newRemaining,
-          status: newStatus,
-        },
-      });
-
-      // Update party balances
-      if (invoice.type === 'ACCOUNTS_PAYABLE' && invoice.vendorId) {
-        await tx.vendor.update({
-          where: { id: invoice.vendorId },
-          data: { balance: round(Math.max(0, invoice.vendor!.balance - paymentAmount)) },
-        });
-      } else if (invoice.type === 'ACCOUNTS_RECEIVABLE' && invoice.customerId) {
-        await tx.customer.update({
-          where: { id: invoice.customerId },
-          data: { outstandingBalance: round(Math.max(0, invoice.customer!.outstandingBalance - paymentAmount)) },
-        });
-      }
-
-      // Auto-post General Ledger Journal Entry
-      const openPeriod = await tx.financialPeriod.findFirst({
-        where: { status: 'OPEN' },
-        orderBy: { startDate: 'desc' },
-      });
-
-      if (openPeriod) {
-        const cashAccount = await tx.account.findFirst({ where: { code: '1010' } });
-        const apAccount = await tx.account.findFirst({ where: { code: '2010' } });
-        const arAccount = await tx.account.findFirst({ where: { code: '1200' } });
-
-        const jeCount = await tx.journalEntry.count();
-        const entryNumber = `JE-PAY-${String(jeCount + 1).padStart(5, '0')}`;
-
-        if (invoice.type === 'ACCOUNTS_PAYABLE' && cashAccount && apAccount) {
-          // Debit AP (2010), Credit Cash (1010)
-          await tx.journalEntry.create({
-            data: {
-              entryNumber,
-              periodId: openPeriod.id,
-              referenceType: 'PAYMENT',
-              referenceId: payment.id,
-              description: `Payment for vendor invoice ${invoice.invoiceNumber}`,
-              createdById: userId,
-              status: 'POSTED',
-              lines: {
-                create: [
-                  { accountId: apAccount.id, debit: paymentAmount, credit: 0, description: 'Debit AP' },
-                  { accountId: cashAccount.id, debit: 0, credit: paymentAmount, description: 'Credit Cash' },
-                ],
-              },
-            },
-          });
-          // Update account balances
-          await tx.account.update({ where: { id: apAccount.id }, data: { balance: round(apAccount.balance - paymentAmount) } });
-          await tx.account.update({ where: { id: cashAccount.id }, data: { balance: round(cashAccount.balance - paymentAmount) } });
-        } else if (invoice.type === 'ACCOUNTS_RECEIVABLE' && cashAccount && arAccount) {
-          // Debit Cash (1010), Credit AR (1200)
-          await tx.journalEntry.create({
-            data: {
-              entryNumber,
-              periodId: openPeriod.id,
-              referenceType: 'PAYMENT',
-              referenceId: payment.id,
-              description: `Receipt from customer for invoice ${invoice.invoiceNumber}`,
-              createdById: userId,
-              status: 'POSTED',
-              lines: {
-                create: [
-                  { accountId: cashAccount.id, debit: paymentAmount, credit: 0, description: 'Debit Cash' },
-                  { accountId: arAccount.id, debit: 0, credit: paymentAmount, description: 'Credit AR' },
-                ],
-              },
-            },
-          });
-          await tx.account.update({ where: { id: cashAccount.id }, data: { balance: round(cashAccount.balance + paymentAmount) } });
-          await tx.account.update({ where: { id: arAccount.id }, data: { balance: round(arAccount.balance - paymentAmount) } });
-        }
-      }
-
-      await recordAuditLog({
-        userId,
-        action: 'CREATE',
-        entityType: 'PAYMENT',
-        entityId: payment.id,
-        afterState: { paymentNumber, amount: paymentAmount, invoiceNumber: invoice.invoiceNumber },
-        requestId,
-      });
-
-      return {
-        payment,
-        isDuplicateSuppressed: false,
-        message: 'Payment recorded and GL journal entry posted successfully.',
-      };
+      const invoice = await tx.invoice.findUnique({ where: { id: data.invoiceId } });
+      assert(invoice, 'Invoice not found', 'INVOICE_NOT_FOUND', 404);
+      assert(['ISSUED','PARTIALLY_PAID'].includes(invoice.status) && invoice.matchStatus === 'MATCHED', 'Invoice is not eligible for settlement', 'INVALID_STATUS');
+      const amount = round(data.amount);
+      assert(Number.isFinite(amount) && amount > 0, 'Payment must be greater than zero', 'INVALID_AMOUNT');
+      assert(amount <= round(invoice.remainingAmount), 'Payment exceeds remaining invoice balance', 'OVERPAYMENT');
+      const payment = await tx.payment.create({ data: { ...data, amount, paymentNumber: documentNumber('PAY'), paymentMethod: data.paymentMethod || 'BANK_TRANSFER' } });
+      const remainingAmount = round(invoice.remainingAmount - amount);
+      await tx.invoice.update({ where: { id: invoice.id }, data: { paidAmount: { increment: amount }, remainingAmount, status: remainingAmount === 0 ? 'PAID' : 'PARTIALLY_PAID' } });
+      const ap = invoice.type === 'ACCOUNTS_PAYABLE';
+      if (ap) await tx.vendor.update({ where: { id: invoice.vendorId! }, data: { balance: { decrement: amount } } });
+      else await tx.customer.update({ where: { id: invoice.customerId! }, data: { outstandingBalance: { decrement: amount } } });
+      await postJournal('PAYMENT', payment.id, `Settlement of ${invoice.invoiceNumber}`, userId, ap ? [
+        { code: '2010', debit: amount, credit: 0 }, { code: '1010', debit: 0, credit: amount },
+      ] : [{ code: '1010', debit: amount, credit: 0 }, { code: '1200', debit: 0, credit: amount }]);
+      await recordAuditLog({ userId, action: 'CREATE', entityType: 'PAYMENT', entityId: payment.id, afterState: { amount, invoiceId: invoice.id }, requestId });
+      return { payment, isDuplicateSuppressed: false, message: 'Payment and journal posted' };
     });
   }
 }

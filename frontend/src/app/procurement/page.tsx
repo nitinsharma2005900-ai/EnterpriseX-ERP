@@ -1,5 +1,6 @@
 'use client';
 
+import { useAuth } from '../../context/AuthContext';
 import React, { useEffect, useState } from 'react';
 import {
   ShoppingCart,
@@ -13,10 +14,9 @@ import {
   Eye,
   Trash2,
 } from 'lucide-react';
-import { fetchApi } from '../../lib/api';
+import { fetchApi, downloadApi } from '../../lib/api';
 import { formatCurrency, formatDate } from '../../lib/utils';
 import { StatusBadge } from '../../components/StatusBadge';
-import { useAuth } from '../../context/AuthContext';
 
 export default function ProcurementPage() {
   const { user } = useAuth();
@@ -224,15 +224,12 @@ export default function ProcurementPage() {
                       >
                         <Eye size={15} />
                       </button>
-                      <a
-                        href={`http://localhost:5000/api/documents/po/${po.id}/pdf`}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button type="button" onClick={() => { void downloadApi(`/documents/po/${po.id}/pdf`, `EnterpriseX-po-${po.id}.pdf`).catch(error => setErrorMsg(error.message)); }}
                         className="p-1.5 rounded-lg text-charcoal/60 dark:text-ivory/60 hover:bg-sage/20 transition"
                         title="Print / View Official PDF"
                       >
                         <Printer size={15} />
-                      </a>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -245,13 +242,14 @@ export default function ProcurementPage() {
       {/* Create PO Modal */}
       {createModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-ivory-50 dark:bg-charcoal border border-sage/40 dark:border-charcoal-50 shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-h-[90vh] overflow-y-auto max-w-2xl rounded-3xl bg-ivory-50 dark:bg-charcoal border border-sage/40 dark:border-charcoal-50 shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-charcoal dark:text-ivory mb-1">Create New Purchase Order</h2>
             <p className="text-xs text-charcoal/60 dark:text-ivory/60 mb-4">
               Authorized procurement requisition subject to multi-tier approval limits.
             </p>
 
             <form onSubmit={handleCreatePO} className="space-y-4">
+              {errorMsg && <p role="alert" className="text-amber text-xs">{errorMsg}</p>}
               <div>
                 <label className="block text-xs font-bold text-charcoal/80 dark:text-ivory/80 uppercase mb-1">
                   Select Supplier / Vendor
@@ -359,7 +357,7 @@ export default function ProcurementPage() {
       {/* PO View & Approval Drawer */}
       {selectedPO && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-charcoal/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-xl rounded-3xl bg-ivory-50 dark:bg-charcoal border border-sage/40 dark:border-charcoal-50 shadow-2xl p-6">
+          <div className="w-full max-h-[90vh] overflow-y-auto max-w-xl rounded-3xl bg-ivory-50 dark:bg-charcoal border border-sage/40 dark:border-charcoal-50 shadow-2xl p-6">
             <div className="flex items-center justify-between pb-3 border-b border-sage/20">
               <div>
                 <span className="text-[10px] font-bold uppercase text-emerald">Requisition Details</span>
@@ -410,7 +408,7 @@ export default function ProcurementPage() {
               </button>
 
               <div className="flex items-center gap-2">
-                {selectedPO.status === 'PENDING_APPROVAL' && (
+                {selectedPO.status === 'PENDING_APPROVAL' && ['ERP_ADMINISTRATOR','FINANCE_OFFICER','DEPARTMENT_MANAGER'].includes(user?.role || '') && (
                   <>
                     <button
                       onClick={() => handleRejectPO(selectedPO.id)}

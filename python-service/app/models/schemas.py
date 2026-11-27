@@ -52,7 +52,7 @@ class TaxLineRequest(BaseModel):
 
 class TaxCalculationRequest(BaseModel):
     jurisdiction: str = Field(default="DEFAULT", description="Tax jurisdiction / State")
-    tax_rate_override: Optional[Decimal] = None
+    tax_rate_override: Optional[Decimal] = Field(default=None, ge=0, le=1)
     lines: List[TaxLineRequest]
 
 

@@ -1,3 +1,4 @@
+import { QueryProvider } from '../components/QueryProvider';
 import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '../context/ThemeContext';
@@ -18,9 +19,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider>
-          <AuthProvider>
+          <QueryProvider><AuthProvider>
             <AppShell>{children}</AppShell>
-          </AuthProvider>
+          </AuthProvider></QueryProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -1,78 +1,122 @@
-name: EnterpriseX CI/CD Pipeline
-
+name: EnterpriseX quality and integration checks
 on:
   push:
-    branches: [ master, main, release/* ]
+    branches: [main, 'release/**']
   pull_request:
-    branches: [ master, main ]
-
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  code-quality-and-lint:
-    name: Code Quality & Governance
+  backend:
+    name: PostgreSQL API, migrations and workflows
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: enterprisex
+          POSTGRES_PASSWORD: ci-database-password
+          POSTGRES_DB: enterprisex
+        ports: ['5432:5432']
+        options: --health-cmd 'pg_isready -U enterprisex' --health-interval 5s --health-timeout 3s --health-retries 15
+    env:
+      DATABASE_URL: postgresql://enterprisex:ci-database-password@localhost:5432/enterprisex
+      SERVICE_TOKEN: ci-service-token
+      PYTHON_SERVICE_URL: http://localhost:8100
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: npm, cache-dependency-path: backend/package-lock.json}
+      - run: npm ci
+        working-directory: backend
+      - run: npx prisma validate && npx prisma generate && npm run lint && npm run build && npm audit --audit-level=high && npm test
+        working-directory: backend
+  python:
+    name: Finance and reporting contracts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Verify CODEOWNERS Presence
-        run: test -f .github/CODEOWNERS
-      - name: Verify Environment Example
-        run: test -f .env.example
-
-  backend-tests:
-    name: Backend API & Workflow Tests
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: pip install -r python-service/requirements.txt
+      - run: python -m pytest tests -v
+        working-directory: python-service
+  frontend:
+    name: React, lint, production build and security
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install Backend Dependencies
-        working-directory: ./backend
-        run: npm ci || npm install
-      - name: Generate Prisma Client
-        working-directory: ./backend
-        run: npx prisma generate
-      - name: Run Prisma Schema Validation
-        working-directory: ./backend
-        run: npx prisma validate
-      - name: Run Automated Backend Tests
-        working-directory: ./backend
-        run: npm test
-
-  python-finance-tests:
-    name: Python Finance & Reporting Engine Tests
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json}
+      - run: npm ci && npm test && npm run lint && npm run build && npm audit --audit-level=high
+        working-directory: frontend
+  browser:
+    name: Browser to PostgreSQL workflows
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: enterprisex
+          POSTGRES_PASSWORD: ci-database-password
+          POSTGRES_DB: enterprisex
+        ports: ['5432:5432']
+        options: --health-cmd 'pg_isready -U enterprisex' --health-interval 5s --health-timeout 3s --health-retries 15
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    env:
+      DATABASE_URL: postgresql://enterprisex:ci-database-password@localhost:5432/enterprisex
+      SERVICE_TOKEN: ci-service-token
+      JWT_SECRET: ci-only-jwt-secret-at-least-thirty-two-characters
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-at-least-thirty-two-characters
+      PYTHON_SERVICE_URL: http://localhost:8100
+      API_URL: http://localhost:5100
+      REDIS_URL: redis://localhost:6379
+      FRONTEND_URL: http://localhost:3100
+      BASE_URL: http://localhost:3100
+      PORT: '5100'
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Install Python Dependencies
-        working-directory: ./python-service
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: pip install -r python-service/requirements.txt
+      - run: npm ci && npx prisma generate && npm run migrate && npm run seed && npm run build
+        working-directory: backend
+      - run: npm ci && npm run build && npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Start real services
         run: |
-          pip install -r requirements.txt
-      - name: Run Pytest Suite
-        working-directory: ./python-service
-        run: |
-          pytest tests/ -v
-
-  frontend-build:
-    name: Frontend Build & Typecheck
+          python -m uvicorn main:app --app-dir python-service --host 0.0.0.0 --port 8100 > /tmp/finance.log 2>&1 &
+          node backend/dist/server.js > /tmp/backend.log 2>&1 &
+          cd frontend
+          node node_modules/next/dist/bin/next start -p 3100 > /tmp/frontend.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://localhost:5100/health && curl -fsS http://localhost:3100/login; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/finance.log /tmp/backend.log /tmp/frontend.log
+          exit 1
+      - run: npm run test:e2e
+        working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: {name: browser-failure-evidence, path: 'frontend/test-results/', retention-days: 3}
+  containers:
+    name: Container builds and infrastructure configuration
     runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: ci-only-local-password
+      JWT_SECRET: ci-only-jwt-secret-at-least-thirty-two-characters
+      JWT_REFRESH_SECRET: ci-only-refresh-secret-at-least-thirty-two-characters
+      SERVICE_TOKEN: ci-only-service-token
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install Frontend Dependencies
-        working-directory: ./frontend
-        run: npm ci || npm install
-      - name: Run Next.js Build
-        working-directory: ./frontend
-        run: npm run build
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: test -f .github/CODEOWNERS && test -f .env.example
+      - run: docker compose -f docker/docker-compose.yml config --quiet
+      - run: docker compose -f docker/docker-compose.yml build

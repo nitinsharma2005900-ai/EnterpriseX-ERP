@@ -1,4 +1,5 @@
-import { prisma } from '../../config/prisma';
+import { assert, documentNumber } from '../../utils/business';
+import { db, transaction } from '../../config/transaction';
 import { AppError } from '../../middleware/errorHandler';
 import { round } from '../../utils/decimal';
 import { recordAuditLog } from '../../middleware/audit';
@@ -10,7 +11,7 @@ export class ProcurementService {
     if (query?.vendorId) where.vendorId = query.vendorId;
     if (query?.departmentId) where.departmentId = query.departmentId;
 
-    return prisma.purchaseOrder.findMany({
+    return db().purchaseOrder.findMany({
       where,
       include: {
         vendor: true,
@@ -26,15 +27,15 @@ export class ProcurementService {
   }
 
   static async getPurchaseOrderById(id: string) {
-    const po = await prisma.purchaseOrder.findUnique({
+    const po = await db().purchaseOrder.findUnique({
       where: { id },
       include: {
         vendor: true,
         department: true,
-        requestedBy: true,
-        approvedBy: true,
+        requestedBy: { select: { id: true, fullName: true, email: true } },
+        approvedBy: { select: { id: true, fullName: true, email: true } },
         items: { include: { product: true } },
-        goodsReceipts: { include: { items: true, receivedBy: true } },
+        goodsReceipts: { include: { items: true, receivedBy: { select: { id: true, fullName: true } } } },
         invoices: { include: { payments: true } },
       },
     });
@@ -58,10 +59,19 @@ export class ProcurementService {
     userId: string,
     requestId?: string
   ) {
+    return transaction(async () => {
     if (!data.items || data.items.length === 0) {
       throw new AppError('Purchase order must contain at least one line item', 400, 'NO_ITEMS');
     }
 
+    assert(new Set(data.items.map(i => i.productId)).size === data.items.length, 'Duplicate product lines are not allowed');
+    const vendor = await db().vendor.findUnique({ where: { id: data.vendorId } });
+    assert(vendor && vendor.status === 'ACTIVE', 'Active vendor not found', 'NOT_FOUND', 404);
+    const requester = await db().user.findUnique({ where: { id: userId } });
+    const department = await db().department.findUnique({ where: { id: data.departmentId || requester?.departmentId || '' } });
+    assert(department, 'Department is outside your authorization scope', 'FORBIDDEN', 403);
+    const products = await db().product.count({ where: { id: { in: data.items.map(i => i.productId) }, active: true } });
+    assert(products === data.items.length, 'Active products not found', 'NOT_FOUND', 404);
     let netAmount = 0;
     let taxAmount = 0;
 
@@ -87,11 +97,11 @@ export class ProcurementService {
     });
 
     const totalAmount = round(netAmount + taxAmount);
-    const count = await prisma.purchaseOrder.count();
-    const poNumber = `PO-2026-${String(count + 1).padStart(4, '0')}`;
-    const departmentId = data.departmentId || (await prisma.department.findFirst())?.id || '';
+    const count = await db().purchaseOrder.count();
+    const poNumber = documentNumber('PO');
+    const departmentId = department.id;
 
-    const po = await prisma.purchaseOrder.create({
+    const po = await db().purchaseOrder.create({
       data: {
         poNumber,
         vendorId: data.vendorId,
@@ -112,7 +122,7 @@ export class ProcurementService {
     });
 
     // Create approval request record
-    await prisma.approvalRequest.create({
+    await db().approvalRequest.create({
       data: {
         documentType: 'PO',
         documentId: po.id,
@@ -132,6 +142,7 @@ export class ProcurementService {
     });
 
     return po;
+    });
   }
 
   static async approvePurchaseOrder(
@@ -140,7 +151,8 @@ export class ProcurementService {
     comments?: string,
     requestId?: string
   ) {
-    const po = await prisma.purchaseOrder.findUnique({ where: { id: poId } });
+    return transaction(async () => {
+    const po = await db().purchaseOrder.findUnique({ where: { id: poId } });
     if (!po) throw new AppError('Purchase order not found', 404, 'NOT_FOUND');
 
     if (po.status !== 'PENDING_APPROVAL' && po.status !== 'DRAFT') {
@@ -152,7 +164,7 @@ export class ProcurementService {
       throw new AppError('Only department managers, finance officers, or admins can approve POs', 403, 'FORBIDDEN');
     }
 
-    if (user.role !== 'ERP_ADMINISTRATOR' && user.approvalLimit > 0 && po.totalAmount > user.approvalLimit) {
+    if (user.role !== 'ERP_ADMINISTRATOR' && po.totalAmount > user.approvalLimit) {
       throw new AppError(
         `Approval limit exceeded. PO total ($${po.totalAmount.toFixed(2)}) exceeds your authorization limit ($${user.approvalLimit.toFixed(2)}). Escalation required.`,
         403,
@@ -160,7 +172,7 @@ export class ProcurementService {
       );
     }
 
-    const updated = await prisma.purchaseOrder.update({
+    const updated = await db().purchaseOrder.update({
       where: { id: poId },
       data: {
         status: 'APPROVED',
@@ -170,7 +182,7 @@ export class ProcurementService {
       include: { vendor: true, items: true },
     });
 
-    await prisma.approvalRequest.updateMany({
+    await db().approvalRequest.updateMany({
       where: { documentId: poId, status: 'PENDING' },
       data: {
         approverId: user.id,
@@ -190,13 +202,16 @@ export class ProcurementService {
     });
 
     return updated;
+    });
   }
 
   static async rejectPurchaseOrder(poId: string, userId: string, comments: string, requestId?: string) {
-    const po = await prisma.purchaseOrder.findUnique({ where: { id: poId } });
+    return transaction(async () => {
+    const po = await db().purchaseOrder.findUnique({ where: { id: poId } });
     if (!po) throw new AppError('Purchase order not found', 404, 'NOT_FOUND');
 
-    const updated = await prisma.purchaseOrder.update({
+    assert(po.status === 'PENDING_APPROVAL', 'Only pending orders can be rejected', 'INVALID_STATUS');
+    const updated = await db().purchaseOrder.update({
       where: { id: poId },
       data: {
         status: 'REJECTED',
@@ -204,7 +219,7 @@ export class ProcurementService {
       },
     });
 
-    await prisma.approvalRequest.updateMany({
+    await db().approvalRequest.updateMany({
       where: { documentId: poId, status: 'PENDING' },
       data: {
         approverId: userId,
@@ -224,5 +239,6 @@ export class ProcurementService {
     });
 
     return updated;
+    });
   }
 }

@@ -1,11 +1,11 @@
-import { prisma } from '../config/prisma';
+import { db, transaction } from '../config/transaction';
 import { logger } from '../config/logger';
 
 export interface AuditRecordOptions {
   userId?: string | null;
   userEmail?: string | null;
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'APPROVE' | 'REJECT' | 'POST' | 'VOID' | 'RECONCILE' | 'LOGIN' | 'INCIDENT_RESOLVE';
-  entityType: 'PO' | 'GRN' | 'INVOICE' | 'PAYMENT' | 'JOURNAL' | 'STOCK' | 'USER' | 'SETTING' | 'INCIDENT';
+  entityType: 'PO' | 'GRN' | 'INVOICE' | 'PAYMENT' | 'JOURNAL' | 'STOCK' | 'USER' | 'SETTING' | 'INCIDENT' | 'SO';
   entityId?: string | null;
   beforeState?: any;
   afterState?: any;
@@ -22,11 +22,11 @@ export async function recordAuditLog(options: AuditRecordOptions): Promise<void>
   try {
     let validUserId: string | null = null;
     if (options.userId) {
-      const exists = await prisma.user.findUnique({ where: { id: options.userId }, select: { id: true } });
+      const exists = await db().user.findUnique({ where: { id: options.userId }, select: { id: true } });
       if (exists) validUserId = exists.id;
     }
 
-    await prisma.auditLog.create({
+    await db().auditLog.create({
       data: {
         userId: validUserId,
         userEmail: options.userEmail || (options.userId && !validUserId ? options.userId : null),
@@ -42,6 +42,6 @@ export async function recordAuditLog(options: AuditRecordOptions): Promise<void>
       },
     });
   } catch (err: any) {
-    logger.error('Failed to write audit log entry', { error: err.message, options });
+    throw err;
   }
 }

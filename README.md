@@ -1,6 +1,6 @@
 # EnterpriseX – Integrated Finance, Procurement, Inventory & Sales ERP
 
-> **Project 08 Technical Assessment | Advanced / Very Difficult**  
+> **Project 08 Technical Assessment | Advanced / Very Difficult**
 > Complete implementation covering all **15 Hands-on Assessments** and the **Domain-Specific Capstone Challenge**.
 
 ---

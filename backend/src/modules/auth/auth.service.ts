@@ -1,13 +1,14 @@
+import { createHash, randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../../config/prisma';
+import { db, transaction } from '../../config/transaction';
 import { config } from '../../config/env';
 import { AppError } from '../../middleware/errorHandler';
 import { recordAuditLog } from '../../middleware/audit';
 
 export class AuthService {
   static async login(email: string, password: string, ipAddress?: string, requestId?: string) {
-    const user = await prisma.user.findUnique({
+    const user = await db().user.findUnique({
       where: { email },
       include: { organization: true, branch: true, department: true, warehouse: true },
     });
@@ -42,6 +43,7 @@ export class AuthService {
 
     const payload = {
       id: user.id,
+      tokenVersion: user.tokenVersion,
       email: user.email,
       fullName: user.fullName,
       role: user.role,
@@ -56,9 +58,11 @@ export class AuthService {
       expiresIn: config.jwt.expiresIn as any,
     });
 
-    const refreshToken = jwt.sign({ id: user.id }, config.jwt.refreshSecret, {
+    const refreshToken = jwt.sign({ id: user.id, jti: randomUUID() }, config.jwt.refreshSecret, {
       expiresIn: config.jwt.refreshExpiresIn as any,
     });
+
+    await db().authSession.create({ data: { userId: user.id, tokenHash: createHash('sha256').update(refreshToken).digest('hex'), expiresAt: new Date(Date.now() + 7 * 86400000) } });
 
     await recordAuditLog({
       userId: user.id,
@@ -92,38 +96,31 @@ export class AuthService {
   static async refreshToken(refreshToken: string) {
     try {
       const decoded = jwt.verify(refreshToken, config.jwt.refreshSecret) as { id: string };
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
+      return await transaction(async tx => {
+        const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
+        const session = await tx.authSession.findUnique({ where: { tokenHash } });
+        const user = await tx.user.findUnique({ where: { id: decoded.id } });
+        if (!session || session.revokedAt || session.expiresAt < new Date() || !user?.active || session.userId !== user.id) throw new Error('Invalid session');
+        await tx.authSession.update({ where: { id: session.id }, data: { revokedAt: new Date() } });
+        const nextRefreshToken = jwt.sign({ id: user.id, jti: randomUUID() }, config.jwt.refreshSecret, { expiresIn: config.jwt.refreshExpiresIn as any });
+        await tx.authSession.create({ data: { userId: user.id, tokenHash: createHash('sha256').update(nextRefreshToken).digest('hex'), expiresAt: new Date(Date.now() + 7 * 86400000) } });
+        const { passwordHash, ...payload } = user;
+        return { accessToken: jwt.sign(payload, config.jwt.secret, { expiresIn: config.jwt.expiresIn as any }), refreshToken: nextRefreshToken };
       });
-
-      if (!user || !user.active) {
-        throw new AppError('Invalid refresh token or user not active', 401, 'INVALID_REFRESH_TOKEN');
-      }
-
-      const payload = {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-        organizationId: user.organizationId,
-        branchId: user.branchId,
-        departmentId: user.departmentId,
-        warehouseId: user.warehouseId,
-        approvalLimit: user.approvalLimit,
-      };
-
-      const newAccessToken = jwt.sign(payload, config.jwt.secret, {
-        expiresIn: config.jwt.expiresIn as any,
-      });
-
-      return { accessToken: newAccessToken };
     } catch {
-      throw new AppError('Refresh token expired or invalid', 401, 'TOKEN_EXPIRED');
+      throw new AppError('Refresh token expired, revoked or invalid', 401, 'TOKEN_EXPIRED');
     }
   }
 
+  static async logout(userId: string) {
+    await transaction(async tx => {
+      await tx.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } });
+      await tx.authSession.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+    });
+  }
+
   static async getMe(userId: string) {
-    const user = await prisma.user.findUnique({
+    const user = await db().user.findUnique({
       where: { id: userId },
       include: { organization: true, branch: true, department: true, warehouse: true },
     });
@@ -134,6 +131,7 @@ export class AuthService {
 
     return {
       id: user.id,
+      tokenVersion: user.tokenVersion,
       email: user.email,
       fullName: user.fullName,
       role: user.role,

@@ -1,31 +1,45 @@
-const API_BASE = '/api';
+'use client';
+import { queryClient } from './query';
+let refreshing: Promise<void> | null = null;
 
+async function request(endpoint: string, options: RequestInit = {}, retry = true): Promise<Response> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('enterprisex_token') : null;
+  const headers = new Headers(options.headers);
+  if (!headers.has('Content-Type') && options.body) headers.set('Content-Type', 'application/json');
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const response = await fetch(`/api${endpoint}`, { ...options, headers, signal: options.signal || AbortSignal.timeout(60000) });
+  if (response.status === 401 && retry && !endpoint.startsWith('/auth/')) {
+    const refreshToken = localStorage.getItem('enterprisex_refresh');
+    if (refreshToken) {
+      refreshing ||= fetch('/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken }) })
+        .then(async result => {
+          const payload = await result.json();
+          if (!result.ok) throw new Error('Session expired; sign in again');
+          localStorage.setItem('enterprisex_token', payload.data.accessToken);
+          localStorage.setItem('enterprisex_refresh', payload.data.refreshToken);
+        }).finally(() => { refreshing = null; });
+      await refreshing;
+      return request(endpoint, options, false);
+    }
+  }
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.error?.message || payload?.detail || `Request failed (${response.status})`);
+  }
+  return response;
+}
 export async function fetchApi<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  let token: string | null = null;
-  if (typeof window !== 'undefined') {
-    token = localStorage.getItem('enterprisex_token');
-  }
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  const data = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    const errorMsg = data?.error?.message || data?.detail || `HTTP Error ${res.status}`;
-    throw new Error(errorMsg);
-  }
-
-  return data;
+  const load = async () => (await request(endpoint, options)).json();
+  if (!options.method || options.method === 'GET') return queryClient.fetchQuery({ queryKey: ['api', endpoint], queryFn: load });
+  const result = await load();
+  await queryClient.invalidateQueries({ queryKey: ['api'] });
+  return result;
+}
+export async function downloadApi(endpoint: string, filename: string) {
+  const response = await request(endpoint);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

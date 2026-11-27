@@ -1,4 +1,5 @@
-import { prisma } from '../../config/prisma';
+import { assert, documentNumber, postJournal } from '../../utils/business';
+import { db, transaction } from '../../config/transaction';
 import { AppError } from '../../middleware/errorHandler';
 import { round } from '../../utils/decimal';
 import { recordAuditLog } from '../../middleware/audit';
@@ -8,7 +9,7 @@ export class ReceiptService {
     const where: any = {};
     if (warehouseId) where.warehouseId = warehouseId;
 
-    return prisma.goodsReceipt.findMany({
+    return db().goodsReceipt.findMany({
       where,
       include: {
         purchaseOrder: { include: { vendor: true } },
@@ -21,12 +22,12 @@ export class ReceiptService {
   }
 
   static async getGoodsReceiptById(id: string) {
-    const grn = await prisma.goodsReceipt.findUnique({
+    const grn = await db().goodsReceipt.findUnique({
       where: { id },
       include: {
         purchaseOrder: { include: { vendor: true, items: true } },
         warehouse: true,
-        receivedBy: true,
+        receivedBy: { select: { id: true, fullName: true, email: true } },
         items: { include: { product: true } },
       },
     });
@@ -57,7 +58,7 @@ export class ReceiptService {
     userId: string,
     requestId?: string
   ) {
-    return prisma.$transaction(async (tx) => {
+    return transaction(async (tx) => {
       // 1. Verify PO exists and is approved
       const po = await tx.purchaseOrder.findUnique({
         where: { id: data.poId },
@@ -74,8 +75,18 @@ export class ReceiptService {
       }
 
       const count = await tx.goodsReceipt.count();
-      const grnNumber = `GRN-2026-${String(count + 1).padStart(4, '0')}`;
+      const grnNumber = documentNumber('GRN');
 
+      const warehouse = await tx.warehouse.findUnique({ where: { id: data.warehouseId } });
+      assert(warehouse?.active, 'Warehouse is inactive or outside your scope', 'FORBIDDEN', 403);
+      assert(data.items.length > 0 && new Set(data.items.map(i => i.poItemId)).size === data.items.length, 'Receipt must contain unique PO lines');
+      for (const item of data.items) {
+        const ordered = po.items.find(i => i.id === item.poItemId);
+        assert(ordered && ordered.productId === item.productId, 'Receipt line does not belong to this purchase order', 'INVALID_PO_LINE');
+        assert(item.quantityReceived > 0 && item.quantityAccepted >= 0 && (item.quantityRejected || 0) >= 0 && round(item.quantityAccepted + (item.quantityRejected || 0)) === round(item.quantityReceived), 'Accepted and rejected quantities must equal received quantity', 'INVALID_QUANTITY');
+        assert(round(ordered.quantityReceived + item.quantityAccepted) <= round(ordered.quantityOrdered), 'Receipt exceeds remaining ordered quantity', 'OVER_RECEIPT');
+        assert(round(item.unitCost) === round(ordered.unitPrice), 'Receipt cost must match approved PO price', 'COST_MISMATCH');
+      }
       // 2. Create Goods Receipt Header
       const grn = await tx.goodsReceipt.create({
         data: {
@@ -131,6 +142,7 @@ export class ReceiptService {
           },
         });
 
+        const averageCost = currentStock && currentStock.quantityOnHand > 0 ? round((currentStock.quantityOnHand * currentStock.averageCost + qtyAccepted * unitCost) / (currentStock.quantityOnHand + qtyAccepted), 6) : unitCost;
         const newOnHand = round((currentStock ? currentStock.quantityOnHand : 0) + qtyAccepted);
         await tx.stockLevel.upsert({
           where: {
@@ -143,11 +155,11 @@ export class ReceiptService {
             productId: item.productId,
             warehouseId: data.warehouseId,
             quantityOnHand: newOnHand,
-            averageCost: unitCost,
+            averageCost,
           },
           update: {
             quantityOnHand: newOnHand,
-            averageCost: unitCost,
+            averageCost,
           },
         });
 
@@ -155,7 +167,7 @@ export class ReceiptService {
         const smCount = await tx.stockMovement.count();
         await tx.stockMovement.create({
           data: {
-            movementNumber: `SM-IN-${String(smCount + 1).padStart(5, '0')}`,
+            movementNumber: documentNumber('SM-IN'),
             productId: item.productId,
             warehouseId: data.warehouseId,
             type: 'IN_PURCHASE',
@@ -184,6 +196,10 @@ export class ReceiptService {
         },
       });
 
+      const receiptValue = round(data.items.reduce((sum, i) => sum + i.quantityAccepted * i.unitCost, 0));
+      if (receiptValue) await postJournal('GRN', grn.id, `Inventory received against ${po.poNumber}`, userId, [
+        { code: '1400', debit: receiptValue, credit: 0 }, { code: '2020', debit: 0, credit: receiptValue },
+      ]);
       await recordAuditLog({
         userId,
         action: 'POST',
@@ -197,6 +213,6 @@ export class ReceiptService {
         where: { id: grn.id },
         include: { items: { include: { product: true } }, purchaseOrder: true, warehouse: true },
       });
-    }, { timeout: 15000, maxWait: 10000 });
+    });
   }
 }

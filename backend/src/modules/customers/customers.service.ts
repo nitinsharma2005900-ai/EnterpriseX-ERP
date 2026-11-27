@@ -1,9 +1,9 @@
-import { prisma } from '../../config/prisma';
+import { db, transaction } from '../../config/transaction';
 import { AppError } from '../../middleware/errorHandler';
 
 export class CustomersService {
   static async getCustomers() {
-    return prisma.customer.findMany({
+    return db().customer.findMany({
       include: {
         _count: { select: { salesOrders: true, invoices: true } },
       },
@@ -12,7 +12,7 @@ export class CustomersService {
   }
 
   static async getCustomerById(id: string) {
-    const customer = await prisma.customer.findUnique({
+    const customer = await db().customer.findUnique({
       where: { id },
       include: {
         salesOrders: { orderBy: { createdAt: 'desc' }, take: 10 },
@@ -33,10 +33,10 @@ export class CustomersService {
     creditLimit?: number;
     paymentTerms?: string;
   }) {
-    const existing = await prisma.customer.findUnique({ where: { code: data.code } });
+    const existing = await db().customer.findUnique({ where: { code: data.code } });
     if (existing) throw new AppError(`Customer code ${data.code} already exists`, 409, 'CUSTOMER_EXISTS');
 
-    return prisma.customer.create({
+    return db().customer.create({
       data: {
         code: data.code,
         name: data.name,

@@ -4,6 +4,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --no-audit --no-fund
 
+ARG API_URL=http://backend:5000
+ENV API_URL=$API_URL
 COPY tsconfig.json next.config.js tailwind.config.ts postcss.config.js ./
 COPY src ./src/
 RUN npm run build
@@ -16,7 +18,8 @@ ENV PORT=3000
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public 2>/dev/null || true
+COPY --from=builder /app/next.config.js ./next.config.js
+USER node
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

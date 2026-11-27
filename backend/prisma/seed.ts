@@ -235,19 +235,19 @@ async function main() {
   for (const acc of accountsData) {
     await prisma.account.upsert({
       where: { code: acc.code },
-      update: { balance: acc.balance },
-      create: acc,
+      update: {},
+      create: { ...acc, balance: 0 },
     });
   }
 
   // 7. Financial Periods
   const currentPeriod = await prisma.financialPeriod.upsert({
-    where: { name: 'FY2026-Q1' },
+    where: { name: `FY${new Date().getUTCFullYear()}` },
     update: {},
     create: {
-      name: 'FY2026-Q1',
-      startDate: new Date('2026-01-01'),
-      endDate: new Date('2026-03-31'),
+      name: `FY${new Date().getUTCFullYear()}`,
+      startDate: new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1)),
+      endDate: new Date(Date.UTC(new Date().getUTCFullYear(), 11, 31, 23, 59, 59)),
       status: 'OPEN',
     },
   });
@@ -265,32 +265,6 @@ async function main() {
     },
   });
 
-  // 8. Initial Balancing Journal Entry
-  const cashAcc = await prisma.account.findUnique({ where: { code: '1010' } });
-  const revAcc = await prisma.account.findUnique({ where: { code: '4010' } });
-
-  if (cashAcc && revAcc) {
-    const existingJE = await prisma.journalEntry.findUnique({ where: { entryNumber: 'JE-2026-0001' } });
-    if (!existingJE) {
-      await prisma.journalEntry.create({
-        data: {
-          entryNumber: 'JE-2026-0001',
-          periodId: currentPeriod.id,
-          referenceType: 'MANUAL',
-          description: 'Q1 Opening cash and commercial billing recognition',
-          status: 'POSTED',
-          createdById: financeUser.id,
-          lines: {
-            create: [
-              { accountId: cashAcc.id, debit: 25000.0, credit: 0.0, description: 'Debit Operating Cash' },
-              { accountId: revAcc.id, debit: 0.0, credit: 25000.0, description: 'Credit Commercial Revenue' },
-            ],
-          },
-        },
-      });
-    }
-  }
-
   // 9. Vendors
   const vendor1 = await prisma.vendor.upsert({
     where: { code: 'VND-001' },
@@ -303,7 +277,7 @@ async function main() {
       address: '450 Industrial Parkway, Gary, IN',
       paymentTerms: 'NET30',
       rating: 4.8,
-      balance: 12500.0,
+      balance: 0,
       status: 'ACTIVE',
     },
   });
@@ -319,7 +293,7 @@ async function main() {
       address: '1200 Terminal Way, Oakland, CA',
       paymentTerms: 'NET15',
       rating: 4.6,
-      balance: 8400.0,
+      balance: 0,
       status: 'ACTIVE',
     },
   });
@@ -335,7 +309,7 @@ async function main() {
       address: '890 Machining Rd, Cleveland, OH',
       paymentTerms: 'NET30',
       rating: 4.7,
-      balance: 4200.0,
+      balance: 0,
       status: 'ACTIVE',
     },
   });
@@ -351,7 +325,7 @@ async function main() {
       phone: '+1 (212) 555-9011',
       address: '750 Lexington Ave, 22nd Fl, New York, NY',
       creditLimit: 75000.0,
-      outstandingBalance: 18500.0,
+      outstandingBalance: 0,
       paymentTerms: 'NET30',
       status: 'ACTIVE',
     },
@@ -367,7 +341,7 @@ async function main() {
       phone: '+1 (206) 555-4477',
       address: '400 Aviation Blvd, Seattle, WA',
       creditLimit: 120000.0,
-      outstandingBalance: 24000.0,
+      outstandingBalance: 0,
       paymentTerms: 'NET30',
       status: 'ACTIVE',
     },
@@ -428,7 +402,7 @@ async function main() {
   for (const p of productsData) {
     const product = await prisma.product.upsert({
       where: { sku: p.sku },
-      update: { unitPrice: p.unitPrice, standardCost: p.standardCost },
+      update: {},
       create: {
         sku: p.sku,
         name: p.name,
@@ -446,7 +420,7 @@ async function main() {
       where: {
         productId_warehouseId: { productId: product.id, warehouseId: whCDC.id },
       },
-      update: { quantityOnHand: p.cdcQty },
+      update: {},
       create: {
         productId: product.id,
         warehouseId: whCDC.id,
@@ -461,7 +435,7 @@ async function main() {
       where: {
         productId_warehouseId: { productId: product.id, warehouseId: whWCL.id },
       },
-      update: { quantityOnHand: p.wclQty },
+      update: {},
       create: {
         productId: product.id,
         warehouseId: whWCL.id,
@@ -472,144 +446,34 @@ async function main() {
     });
   }
 
-  // 12. Seed an initial Purchase Order & GRN for demonstration
-  const p1 = await prisma.product.findUnique({ where: { sku: 'SKU-SERV-100' } });
-  const p2 = await prisma.product.findUnique({ where: { sku: 'SKU-MOT-200' } });
 
-  if (p1 && p2) {
-    const existingPO = await prisma.purchaseOrder.findUnique({ where: { poNumber: 'PO-2026-0001' } });
-    if (!existingPO) {
-      const po = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: 'PO-2026-0001',
-          vendorId: vendor1.id,
-          departmentId: depProc.id,
-          requestedById: procurementUser.id,
-          approvedById: managerUser.id,
-          status: 'COMPLETED',
-          netAmount: 11700.0,
-          taxAmount: 1170.0,
-          totalAmount: 12870.0,
-          approvalNotes: 'Approved for Q1 CDC restocking plan',
-          items: {
-            create: [
-              {
-                productId: p1.id,
-                quantityOrdered: 10,
-                quantityReceived: 10,
-                unitPrice: 820.0,
-                taxRate: 0.10,
-                subtotal: 8200.0,
-                totalAmount: 9020.0,
-              },
-              {
-                productId: p2.id,
-                quantityOrdered: 20,
-                quantityReceived: 20,
-                unitPrice: 175.0,
-                taxRate: 0.10,
-                subtotal: 3500.0,
-                totalAmount: 3850.0,
-              },
-            ],
-          },
-        },
-        include: { items: true },
-      });
-
-      // GRN
-      const grn = await prisma.goodsReceipt.create({
-        data: {
-          grnNumber: 'GRN-2026-0001',
-          poId: po.id,
-          warehouseId: whCDC.id,
-          receivedById: warehouseUser.id,
-          status: 'POSTED',
-          carrier: 'Midwest Freight Lines',
-          trackingNumber: 'TRK-9928172',
-          items: {
-            create: [
-              {
-                poItemId: po.items[0].id,
-                productId: p1.id,
-                quantityReceived: 10,
-                quantityAccepted: 10,
-                unitCost: 820.0,
-                batchNumber: 'BATCH-2026-A1',
-              },
-              {
-                poItemId: po.items[1].id,
-                productId: p2.id,
-                quantityReceived: 20,
-                quantityAccepted: 20,
-                unitCost: 175.0,
-                batchNumber: 'BATCH-2026-A2',
-              },
-            ],
-          },
-        },
-      });
-
-      // Invoice
-      const invoice = await prisma.invoice.create({
-        data: {
-          invoiceNumber: 'INV-AP-2026-0001',
-          type: 'ACCOUNTS_PAYABLE',
-          vendorId: vendor1.id,
-          poId: po.id,
-          grnId: grn.id,
-          status: 'PAID',
-          subtotal: 11700.0,
-          taxAmount: 1170.0,
-          totalAmount: 12870.0,
-          paidAmount: 12870.0,
-          remainingAmount: 0.0,
-          dueDate: new Date('2026-04-15'),
-          matchStatus: 'MATCHED',
-          items: {
-            create: [
-              { productId: p1.id, description: '10x Industrial Rack Server X1', quantity: 10, unitPrice: 820.0, taxRate: 0.10, amount: 9020.0 },
-              { productId: p2.id, description: '20x Brushless Motor 48V', quantity: 20, unitPrice: 175.0, taxRate: 0.10, amount: 3850.0 },
-            ],
-          },
-        },
-      });
-
-      // Payment
-      await prisma.payment.create({
-        data: {
-          paymentNumber: 'PAY-2026-0001',
-          invoiceId: invoice.id,
-          amount: 12870.0,
-          paymentMethod: 'BANK_TRANSFER',
-          referenceNumber: 'WIRE-US-991823',
-          status: 'COMPLETED',
-          idempotencyKey: 'SEED-PAY-0001',
-          notes: 'Full settlement of INV-AP-2026-0001',
-        },
-      });
-    }
+  for (const [code, name, category] of [
+    ['2020', 'Goods Received Not Invoiced', 'LIABILITY'], ['1300', 'Recoverable Input Tax', 'ASSET'], ['2030', 'Sales Tax Payable', 'LIABILITY'],
+  ]) await prisma.account.upsert({ where: { code }, update: {}, create: { code, name, category, balance: 0 } });
+  for (const model of [prisma.account, prisma.financialPeriod, prisma.vendor, prisma.customer, prisma.product] as any[]) {
+    await model.updateMany({ where: { organizationId: null }, data: { organizationId: org.id } });
   }
+  if (!await prisma.journalEntry.findUnique({ where: { entryNumber: 'OPENING-BALANCES' } })) {
+    await prisma.$transaction(async tx => {
+      const stocks = await tx.stockLevel.findMany();
+      const inventory = Math.round(stocks.reduce((v, st) => v + st.quantityOnHand * st.averageCost, 0) * 100) / 100;
+      for (const st of stocks) await tx.stockMovement.create({ data: {
+        movementNumber: `OPENING-${st.id}`, productId: st.productId, warehouseId: st.warehouseId, type: 'ADJUSTMENT',
+        quantity: st.quantityOnHand, unitCost: st.averageCost, totalCost: st.quantityOnHand * st.averageCost, notes: 'Documented demo opening inventory', referenceType: 'OPENING',
+      } });
+      const cash = await tx.account.findUniqueOrThrow({ where: { code: '1010' } });
+      const stock = await tx.account.findUniqueOrThrow({ where: { code: '1400' } });
+      const equity = await tx.account.findUniqueOrThrow({ where: { code: '3010' } });
+      await tx.journalEntry.create({ data: { entryNumber: 'OPENING-BALANCES', periodId: currentPeriod.id, referenceType: 'OPENING', description: 'Demo opening capital and inventory', createdById: adminUser.id,
+        lines: { create: [{ accountId: cash.id, debit: 150000, credit: 0 }, { accountId: stock.id, debit: inventory, credit: 0 }, { accountId: equity.id, debit: 0, credit: inventory + 150000 }] },
+      } });
+      await tx.account.update({ where: { id: cash.id }, data: { balance: 150000 } });
+      await tx.account.update({ where: { id: stock.id }, data: { balance: inventory } });
+      await tx.account.update({ where: { id: equity.id }, data: { balance: inventory + 150000 } });
+    });
+  }
+  console.log('EnterpriseX initialized; existing business transactions preserved.');
 
-  // 13. System Incident Seed
-  await prisma.systemIncident.upsert({
-    where: { code: 'INC-2026-001' },
-    update: {},
-    create: {
-      code: 'INC-2026-001',
-      title: 'Legacy Batch Sync Divergence Mitigated',
-      severity: 'LOW',
-      status: 'RESOLVED',
-      module: 'FINANCE',
-      diagnosisDetails: 'Automated diagnostic detected micro-divergence in historical staging ledger.',
-      rootCause: 'Transient network failure during legacy CSV bulk import.',
-      resolutionAction: 'Automated reconciliation script synchronized ledger balances successfully.',
-      resolvedBy: adminUser.id,
-      resolvedAt: new Date(),
-    },
-  });
-
-  console.log('✅ EnterpriseX ERP Seed Complete! 6 Demo users, COA, inventory, vendors, and sample transactions ready.');
 }
 
 main()

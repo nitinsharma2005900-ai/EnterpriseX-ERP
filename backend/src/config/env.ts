@@ -5,6 +5,13 @@ import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 dotenv.config();
 
+if (process.env.NODE_ENV === 'production') {
+  for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL', 'SERVICE_TOKEN']) {
+    if (!process.env[key] || (key.includes('SECRET') && process.env[key]!.length < 32)) throw new Error(`Missing or invalid production configuration: ${key}`);
+  }
+  if (!process.env.DATABASE_URL?.startsWith('postgres')) throw new Error('Production requires persistent PostgreSQL');
+}
+
 export const config = {
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '5000', 10),
@@ -19,6 +26,7 @@ export const config = {
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+  serviceToken: process.env.SERVICE_TOKEN || 'local-development-service-token',
   integrations: {
     emailMode: process.env.EMAIL_SERVICE_MODE || 'sandbox',
     docStorageMode: process.env.DOCUMENT_STORAGE_MODE || 'local',

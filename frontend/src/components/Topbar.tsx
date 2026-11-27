@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   Bell,
@@ -24,17 +24,19 @@ export function Topbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [roleDropdown, setRoleDropdown] = useState(false);
 
+  const [roleError, setRoleError] = useState('');
+  useEffect(() => { const handle = (e: KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearchOpen(v => !v); } }; window.addEventListener('keydown', handle); return () => window.removeEventListener('keydown', handle); }, []);
   return (
-    <header className="h-16 border-b border-sage/30 dark:border-charcoal-50 bg-ivory-50/80 dark:bg-charcoal/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20">
+    <header className="h-16 border-b border-sage/30 dark:border-charcoal-50 bg-ivory-50/80 dark:bg-charcoal/80 backdrop-blur-md px-2 sm:px-6 flex items-center justify-between sticky top-0 z-20">
       {/* Search trigger */}
       <div className="flex items-center gap-4">
         <button
           onClick={() => setSearchOpen(true)}
-          className="flex items-center gap-3 px-4 py-2 rounded-xl bg-ivory dark:bg-charcoal-50 border border-sage/30 dark:border-charcoal-100 text-charcoal/60 dark:text-ivory/60 hover:border-emerald/50 transition w-64 text-sm shadow-sm"
+          className="flex items-center gap-3 px-4 py-2 rounded-xl bg-ivory dark:bg-charcoal-50 border border-sage/30 dark:border-charcoal-100 text-charcoal/60 dark:text-ivory/60 hover:border-emerald/50 transition w-9 sm:w-64 text-sm shadow-sm"
         >
           <Search size={16} className="text-emerald" />
-          <span>Quick search...</span>
-          <kbd className="ml-auto text-[10px] bg-sage/20 dark:bg-charcoal px-1.5 py-0.5 rounded text-charcoal/70 dark:text-ivory/70 font-mono">
+          <span className="hidden sm:inline">Quick search...</span>
+          <kbd className="hidden sm:inline ml-auto text-[10px] bg-sage/20 dark:bg-charcoal px-1.5 py-0.5 rounded text-charcoal/70 dark:text-ivory/70 font-mono">
             Ctrl+K
           </kbd>
         </button>
@@ -50,7 +52,7 @@ export function Topbar() {
           >
             <Shield size={14} className="text-emerald" />
             <span className="hidden sm:inline">Role:</span>
-            <span className="font-bold underline">{user?.role?.replace('_', ' ') || 'Select Role'}</span>
+            <span className="font-bold underline max-w-24 sm:max-w-none truncate">{user?.role?.replace('_', ' ') || 'Select Role'}</span>
             <ChevronDown size={14} />
           </button>
 
@@ -70,7 +72,7 @@ export function Topbar() {
                   <button
                     key={acc.email}
                     onClick={() => {
-                      switchRole(acc.email);
+                      void switchRole(acc.email).catch(error => setRoleError(error.message));
                       setRoleDropdown(false);
                     }}
                     className={`w-full text-left p-2.5 rounded-xl text-xs transition flex flex-col gap-0.5 ${
@@ -113,6 +115,7 @@ export function Topbar() {
         </button>
       </div>
 
+      {roleError && <p role="alert" className="absolute top-16 right-2 bg-ivory text-amber p-2">{roleError}</p>}
       {/* Global Search Modal */}
       <GlobalSearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 

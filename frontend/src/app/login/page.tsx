@@ -23,7 +23,7 @@ export default function LoginPage() {
   const handleDemoClick = async (demoEmail: string) => {
     setEmail(demoEmail);
     setError(null);
-    await login(demoEmail, 'EnterpriseX2026!');
+    try { await login(demoEmail, 'EnterpriseX2026!'); } catch (error: any) { setError(error.message); }
   };
 
   return (

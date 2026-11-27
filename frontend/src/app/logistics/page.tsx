@@ -1,12 +1,14 @@
 'use client';
 
+import { useAuth } from '../../context/AuthContext';
 import React, { useEffect, useState } from 'react';
 import { Truck, Plus, CheckCircle, AlertCircle, Printer, Eye, PackageCheck } from 'lucide-react';
-import { fetchApi } from '../../lib/api';
+import { fetchApi, downloadApi } from '../../lib/api';
 import { formatDate } from '../../lib/utils';
 import { StatusBadge } from '../../components/StatusBadge';
 
 export default function LogisticsPage() {
+  const { user } = useAuth();
   const [goodsReceipts, setGoodsReceipts] = useState<any[]>([]);
   const [approvedPOs, setApprovedPOs] = useState<any[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
@@ -155,15 +157,12 @@ export default function LogisticsPage() {
                     <StatusBadge status={grn.status} />
                   </td>
                   <td className="py-3 px-4 text-center">
-                    <a
-                      href={`http://localhost:5000/api/documents/grn/${grn.id}/pdf`}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button type="button" onClick={() => { void downloadApi(`/documents/grn/${grn.id}/pdf`, `EnterpriseX-grn-${grn.id}.pdf`).catch(error => setErrorMsg(error.message)); }}
                       className="p-1.5 inline-flex rounded-lg text-charcoal/60 hover:bg-sage/20 transition"
                       title="Print / View GRN PDF"
                     >
                       <Printer size={15} />
-                    </a>
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -182,6 +181,7 @@ export default function LogisticsPage() {
             </p>
 
             <form onSubmit={handleReceiveGoods} className="space-y-4">
+              {errorMsg && <p role="alert" className="text-amber text-xs">{errorMsg}</p>}
               <div>
                 <label className="block text-xs font-bold text-charcoal/80 dark:text-ivory/80 uppercase mb-1">
                   Select Approved Purchase Order

@@ -6,7 +6,7 @@ export class HealthController {
   static async getHealth(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const data = await HealthService.getHealthStatus();
-      res.json(data);
+      res.status(data.status === 'HEALTHY' ? 200 : 503).json(data);
     } catch (err) {
       next(err);
     }

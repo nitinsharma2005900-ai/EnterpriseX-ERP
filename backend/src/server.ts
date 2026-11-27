@@ -1,3 +1,9 @@
+import { buildApiSpec } from './apiSpec';
+import rateLimit from 'express-rate-limit';
+import { authenticate } from './middleware/auth';
+import { requireRole, Roles } from './middleware/rbac';
+import { transactionPDF } from './modules/integrations/documents';
+import { startWorker, stopWorker } from './modules/integrations/jobs';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -22,6 +28,7 @@ import integrationsRoutes from './modules/integrations/integrations.routes';
 import auditRoutes from './modules/audit/audit.routes';
 import reportsRoutes from './modules/reports/reports.routes';
 import healthRoutes from './modules/health/health.routes';
+import { masterRoutes } from './modules/master.routes';
 
 // Document generation
 import { generateTransactionHTML } from './utils/pdfGenerator';
@@ -31,10 +38,26 @@ export const app = express();
 
 // Security and utility middleware
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: '*', credentials: true }));
+app.set('trust proxy', 1);
+app.use(cors({ origin: config.frontendUrl.split(','), credentials: true }));
+app.use('/api/auth/login', rateLimit({ windowMs: 60000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(requestIdMiddleware);
+app.use((req, _res, next) => { if (req.url.startsWith('/api/v1/')) req.url = req.url.replace('/api/v1/', '/api/'); next(); });
+app.use((req, res, next) => {
+  const original = res.json.bind(res);
+  res.json = (body: any) => {
+    if (body?.data && Array.isArray(body.data)) {
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const pageSize = Math.min(500, Math.max(1, Number(req.query.pageSize) || 100));
+      body = { ...body, pagination: { page, pageSize, hasMore: body.data.length === pageSize } };
+    }
+    const clean = JSON.parse(JSON.stringify(body, (key, value) => ['passwordHash','tokenHash','tokenVersion'].includes(key) ? undefined : value));
+    return original(clean);
+  };
+  next();
+});
 
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('short'));
@@ -66,82 +89,33 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/system', healthRoutes);
 
-// Document View & Printable PDF Routes
-app.get('/api/documents/po/:id/pdf', async (req, res, next) => {
+// Documents are binary PDF attachments; authentication and resource scope apply.
+app.get('/api/documents/:type/:id/pdf', authenticate, async (req, res, next) => {
   try {
-    const po = await prisma.purchaseOrder.findUnique({
-      where: { id: req.params.id },
-      include: { vendor: true, items: { include: { product: true } } },
-    });
-    if (!po) return res.status(404).send('PO not found');
-    const html = generateTransactionHTML('PO', po);
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.get('/api/documents/invoice/:id/pdf', async (req, res, next) => {
-  try {
-    const inv = await prisma.invoice.findUnique({
-      where: { id: req.params.id },
-      include: { vendor: true, customer: true, items: { include: { product: true } } },
-    });
-    if (!inv) return res.status(404).send('Invoice not found');
-    const html = generateTransactionHTML('INVOICE', inv);
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.get('/api/documents/grn/:id/pdf', async (req, res, next) => {
-  try {
-    const grn = await prisma.goodsReceipt.findUnique({
-      where: { id: req.params.id },
-      include: { purchaseOrder: { include: { vendor: true } }, items: { include: { product: true } } },
-    });
-    if (!grn) return res.status(404).send('GRN not found');
-    const html = generateTransactionHTML('GRN', grn);
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
-  } catch (err) {
-    next(err);
-  }
+    const content = await transactionPDF(req.params.type, req.params.id);
+    res.type('application/pdf').attachment(`${req.params.type}-${req.params.id}.pdf`).send(content);
+  } catch (err) { next(err); }
 });
 
 // Swagger / OpenAPI specification
-app.get('/api/docs/spec', (req, res) => {
-  res.json({
-    openapi: '3.0.0',
-    info: {
-      title: 'EnterpriseX Integrated ERP API',
-      version: '1.0.0',
-      description: 'Authoritative REST API specification for EnterpriseX: Finance, Procurement, Inventory, Sales, and Workflows.',
-    },
-    paths: {
-      '/api/auth/login': { post: { summary: 'User login with JWT generation' } },
-      '/api/auth/demo-accounts': { get: { summary: 'Retrieve pre-configured synthetic demo accounts' } },
-      '/api/finance/accounts': { get: { summary: 'List Chart of Accounts' }, post: { summary: 'Create new GL Account' } },
-      '/api/finance/journals': { post: { summary: 'Post balanced double-entry journal entry' } },
-      '/api/procurement/purchase-orders': { get: { summary: 'List purchase orders' }, post: { summary: 'Create purchase order' } },
-      '/api/logistics/goods-receipts': { post: { summary: 'Receive goods and update inventory' } },
-      '/api/sales/sales-orders': { post: { summary: 'Create sales order with credit check' } },
-      '/api/billing/invoices/ap': { post: { summary: 'Create AP Invoice with 3-Way Matching' } },
-      '/api/billing/payments': { post: { summary: 'Record idempotent payment and auto-post GL journal' } },
-      '/api/workflows/purchase-to-pay': { post: { summary: 'Execute atomic P2P workflow with compensation' } },
-      '/api/system/diagnostics': { get: { summary: 'Run integrity diagnostics' } },
-    },
-  });
-});
+app.get('/api/docs/spec', (_req, res) => res.json(buildApiSpec([
+  ['/api/auth',authRoutes], ['/api/finance',accountsRoutes], ['/api/vendors',vendorsRoutes], ['/api/customers',customersRoutes],
+  ['/api/inventory',inventoryRoutes], ['/api/procurement',procurementRoutes], ['/api/logistics',receiptRoutes], ['/api/sales',salesRoutes],
+  ['/api/billing',billingRoutes], ['/api/workflows',workflowsRoutes], ['/api/integrations',integrationsRoutes], ['/api/audit',auditRoutes],
+  ['/api/reports',reportsRoutes], ['/api/system',healthRoutes], ['/api',masterRoutes],
+])));
 
+app.use('/api', masterRoutes);
+app.use((_req, _res, next) => next(Object.assign(new Error('API route not found'), { statusCode: 404, code: 'NOT_FOUND' })));
 // Global Error Handler
 app.use(errorHandler);
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(config.port, () => {
+  const server = app.listen(config.port, '0.0.0.0', () => {
     logger.info(`🚀 EnterpriseX Primary Business API running on http://localhost:${config.port}`);
   });
+  startWorker().catch(error => logger.error('Worker startup failed', { message: error.message }));
+  const shutdown = () => server.close(async () => { await stopWorker(); await prisma.$disconnect(); process.exit(0); });
+  process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);
 }
+export default app;
