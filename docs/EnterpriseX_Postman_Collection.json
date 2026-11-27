@@ -1,0 +1,68 @@
+{
+  "info": {
+    "_postman_id": "enterprisex-erp-collection-v1",
+    "name": "EnterpriseX ERP API Collection",
+    "description": "Complete Postman collection for EnterpriseX: Authentication, Finance, Procurement, Inventory, Sales, Billing, and Workflows.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth - Login as Admin",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@enterprisex.com\",\n  \"password\": \"EnterpriseX2026!\"\n}"
+        },
+        "url": { "raw": "http://localhost:5000/api/auth/login", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "auth", "login"] }
+      }
+    },
+    {
+      "name": "Auth - Get Demo Accounts",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "http://localhost:5000/api/auth/demo-accounts", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "auth", "demo-accounts"] }
+      }
+    },
+    {
+      "name": "Finance - List Chart of Accounts",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": { "raw": "http://localhost:5000/api/finance/accounts", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "finance", "accounts"] }
+      }
+    },
+    {
+      "name": "Procurement - List Purchase Orders",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": { "raw": "http://localhost:5000/api/procurement/purchase-orders", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "procurement", "purchase-orders"] }
+      }
+    },
+    {
+      "name": "Billing - Record Idempotent Payment",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"amount\": 500.00,\n  \"idempotencyKey\": \"POSTMAN-PAY-001\",\n  \"paymentMethod\": \"BANK_TRANSFER\"\n}"
+        },
+        "url": { "raw": "http://localhost:5000/api/billing/payments", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "billing", "payments"] }
+      }
+    },
+    {
+      "name": "System - Run Integrity Diagnostics",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": { "raw": "http://localhost:5000/api/system/diagnostics", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "system", "diagnostics"] }
+      }
+    }
+  ]
+}

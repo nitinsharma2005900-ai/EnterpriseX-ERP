@@ -1,0 +1,491 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Core Organization & Authorization Models (Assessment 01, 04)
+// -----------------------------------------------------------------------------
+
+model Organization {
+  id          String       @id @default(uuid())
+  name        String
+  code        String       @unique
+  taxId       String?
+  currency    String       @default("USD")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  branches    Branch[]
+  departments Department[]
+  users       User[]
+}
+
+model Branch {
+  id             String       @id @default(uuid())
+  organizationId String
+  name           String
+  code           String       @unique
+  address        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  warehouses     Warehouse[]
+  users          User[]
+}
+
+model Department {
+  id             String          @id @default(uuid())
+  organizationId String
+  name           String
+  code           String          @unique
+  budget         Decimal         @default(0.0) @db.Decimal(14, 2)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  users          User[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model Warehouse {
+  id             String          @id @default(uuid())
+  branchId       String
+  name           String
+  code           String          @unique
+  location       String?
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  branch         Branch          @relation(fields: [branchId], references: [id])
+  stockLevels    StockLevel[]
+  stockMovements StockMovement[]
+  goodsReceipts  GoodsReceipt[]
+  users          User[]
+}
+
+model User {
+  id             String            @id @default(uuid())
+  organizationId String
+  branchId       String?
+  departmentId   String?
+  warehouseId    String?
+  email          String            @unique
+  passwordHash   String
+  fullName       String
+  role           String            // ERP_ADMINISTRATOR, FINANCE_OFFICER, PROCUREMENT_OFFICER, WAREHOUSE_OPERATOR, SALES_USER, DEPARTMENT_MANAGER
+  approvalLimit  Decimal           @default(0.0) @db.Decimal(14, 2)
+  active         Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  branch         Branch?           @relation(fields: [branchId], references: [id])
+  department     Department?       @relation(fields: [departmentId], references: [id])
+  warehouse      Warehouse?        @relation(fields: [warehouseId], references: [id])
+  auditLogs      AuditLog[]
+  requestedPOs   PurchaseOrder[]   @relation("RequestedBy")
+  approvedPOs    PurchaseOrder[]   @relation("ApprovedBy")
+  goodsReceipts  GoodsReceipt[]
+  approvals      ApprovalRequest[] @relation("Approver")
+  requests       ApprovalRequest[] @relation("Requester")
+  notifications  SystemNotification[]
+}
+
+// -----------------------------------------------------------------------------
+// Financial & General Ledger Models (Assessment 02, 03, 05)
+// -----------------------------------------------------------------------------
+
+model Account {
+  id           String        @id @default(uuid())
+  code         String        @unique // e.g. 1010, 1200, 2010, 4010, 5010
+  name         String
+  category     String        // ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
+  subcategory  String?       // CURRENT_ASSET, FIXED_ASSET, AP, AR, COGS, OPEX
+  currency     String        @default("USD")
+  balance      Decimal       @default(0.0) @db.Decimal(14, 2)
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  journalLines JournalLine[]
+}
+
+model FinancialPeriod {
+  id             String         @id @default(uuid())
+  name           String         @unique // e.g. "FY2026-Q1", "2026-03"
+  startDate      DateTime
+  endDate        DateTime
+  status         String         @default("OPEN") // OPEN, CLOSED, LOCKED
+  closedAt       DateTime?
+  closedBy       String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  journalEntries JournalEntry[]
+}
+
+model JournalEntry {
+  id            String        @id @default(uuid())
+  entryNumber   String        @unique // e.g. "JE-2026-0001"
+  date          DateTime      @default(now())
+  periodId      String
+  referenceType String        // PO, GRN, INVOICE, PAYMENT, MANUAL, ADJUSTMENT
+  referenceId   String?
+  description   String
+  status        String        @default("POSTED") // DRAFT, POSTED, REVERSED
+  createdById   String
+  postedAt      DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+  period        FinancialPeriod @relation(fields: [periodId], references: [id])
+  lines         JournalLine[]
+}
+
+model JournalLine {
+  id             String       @id @default(uuid())
+  journalEntryId String
+  accountId      String
+  description    String?
+  debit          Decimal      @default(0.0) @db.Decimal(14, 2)
+  credit         Decimal      @default(0.0) @db.Decimal(14, 2)
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account        Account      @relation(fields: [accountId], references: [id])
+}
+
+// -----------------------------------------------------------------------------
+// Master Data: Vendors, Customers, Products (Assessment 02, 03)
+// -----------------------------------------------------------------------------
+
+model Vendor {
+  id             String          @id @default(uuid())
+  code           String          @unique // e.g. "VND-001"
+  name           String
+  taxNumber      String?
+  email          String
+  phone          String?
+  address        String?
+  paymentTerms   String          @default("NET30") // NET15, NET30, NET60
+  currency       String          @default("USD")
+  rating         Decimal         @default(4.5) @db.Decimal(3, 1)
+  balance        Decimal         @default(0.0) @db.Decimal(14, 2)
+  status         String          @default("ACTIVE") // ACTIVE, BLOCKED, UNDER_REVIEW
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  purchaseOrders PurchaseOrder[]
+  invoices       Invoice[]
+}
+
+model Customer {
+  id                 String       @id @default(uuid())
+  code               String       @unique // e.g. "CUST-001"
+  name               String
+  taxNumber          String?
+  email              String
+  phone              String?
+  address            String?
+  creditLimit        Decimal      @default(50000.0) @db.Decimal(14, 2)
+  outstandingBalance Decimal      @default(0.0) @db.Decimal(14, 2)
+  paymentTerms       String       @default("NET30")
+  status             String       @default("ACTIVE") // ACTIVE, SUSPENDED
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  salesOrders        SalesOrder[]
+  invoices           Invoice[]
+}
+
+model Product {
+  id                String              @id @default(uuid())
+  sku               String              @unique // e.g. "SKU-IND-100"
+  name              String
+  description       String?
+  category          String              @default("HARDWARE")
+  uom               String              @default("PCS") // PCS, KG, METER, BOX
+  unitPrice         Decimal             @default(0.0) @db.Decimal(14, 2)
+  standardCost      Decimal             @default(0.0) @db.Decimal(14, 2)
+  reorderPoint      Decimal             @default(10.0) @db.Decimal(14, 2)
+  active            Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  stockLevels       StockLevel[]
+  stockMovements    StockMovement[]
+  poItems           PurchaseOrderItem[]
+  grnItems          GoodsReceiptItem[]
+  soItems           SalesOrderItem[]
+  invoiceItems      InvoiceItem[]
+}
+
+model StockLevel {
+  id                String    @id @default(uuid())
+  productId         String
+  warehouseId       String
+  quantityOnHand    Decimal   @default(0.0) @db.Decimal(14, 2)
+  quantityReserved  Decimal   @default(0.0) @db.Decimal(14, 2)
+  averageCost       Decimal   @default(0.0) @db.Decimal(14, 2)
+  updatedAt         DateTime  @updatedAt
+  product           Product   @relation(fields: [productId], references: [id])
+  warehouse         Warehouse @relation(fields: [warehouseId], references: [id])
+
+  @@unique([productId, warehouseId])
+}
+
+model StockMovement {
+  id             String    @id @default(uuid())
+  movementNumber String    @unique // e.g. "SM-0001"
+  date           DateTime  @default(now())
+  productId      String
+  warehouseId    String
+  type           String    // IN_PURCHASE, OUT_SALE, TRANSFER_IN, TRANSFER_OUT, ADJUSTMENT
+  quantity       Decimal   @db.Decimal(14, 2)
+  unitCost       Decimal   @db.Decimal(14, 2)
+  totalCost      Decimal   @db.Decimal(14, 2)
+  referenceType  String?   // PO, SO, GRN, ADJUSTMENT
+  referenceId    String?
+  batchNumber    String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  product        Product   @relation(fields: [productId], references: [id])
+  warehouse      Warehouse @relation(fields: [warehouseId], references: [id])
+}
+
+// -----------------------------------------------------------------------------
+// Procurement & Goods Receipt (Assessment 02, 07, 12)
+// -----------------------------------------------------------------------------
+
+model PurchaseOrder {
+  id                   String              @id @default(uuid())
+  poNumber             String              @unique // e.g. "PO-2026-001"
+  vendorId             String
+  departmentId         String
+  requestedById        String
+  approvedById         String?
+  status               String              @default("DRAFT") // DRAFT, PENDING_APPROVAL, APPROVED, REJECTED, PARTIALLY_RECEIVED, COMPLETED, CANCELLED
+  totalAmount          Decimal             @default(0.0) @db.Decimal(14, 2)
+  taxAmount            Decimal             @default(0.0) @db.Decimal(14, 2)
+  netAmount            Decimal             @default(0.0) @db.Decimal(14, 2)
+  currency             String              @default("USD")
+  expectedDeliveryDate DateTime?
+  terms                String?
+  approvalNotes        String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  vendor               Vendor              @relation(fields: [vendorId], references: [id])
+  department           Department          @relation(fields: [departmentId], references: [id])
+  requestedBy          User                @relation("RequestedBy", fields: [requestedById], references: [id])
+  approvedBy           User?               @relation("ApprovedBy", fields: [approvedById], references: [id])
+  items                PurchaseOrderItem[]
+  goodsReceipts        GoodsReceipt[]
+  invoices             Invoice[]
+}
+
+model PurchaseOrderItem {
+  id               String        @id @default(uuid())
+  poId             String
+  productId        String
+  quantityOrdered  Decimal       @db.Decimal(14, 2)
+  quantityReceived Decimal       @default(0.0) @db.Decimal(14, 2)
+  unitPrice        Decimal       @db.Decimal(14, 2)
+  taxRate          Decimal       @default(0.10) @db.Decimal(5, 2)
+  subtotal         Decimal       @db.Decimal(14, 2)
+  totalAmount      Decimal       @db.Decimal(14, 2)
+  purchaseOrder    PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  product          Product       @relation(fields: [productId], references: [id])
+  grnItems         GoodsReceiptItem[]
+}
+
+model GoodsReceipt {
+  id             String             @id @default(uuid())
+  grnNumber      String             @unique // e.g. "GRN-2026-001"
+  poId           String
+  warehouseId    String
+  receivedById   String
+  receivedDate   DateTime           @default(now())
+  status         String             @default("POSTED") // DRAFT, POSTED, REJECTED
+  carrier        String?
+  trackingNumber String?
+  notes          String?
+  createdAt      DateTime           @default(now())
+  purchaseOrder  PurchaseOrder      @relation(fields: [poId], references: [id])
+  warehouse      Warehouse          @relation(fields: [warehouseId], references: [id])
+  receivedBy     User               @relation(fields: [receivedById], references: [id])
+  items          GoodsReceiptItem[]
+  invoices       Invoice[]
+}
+
+model GoodsReceiptItem {
+  id               String            @id @default(uuid())
+  grnId            String
+  poItemId         String?
+  productId        String
+  quantityReceived Decimal           @db.Decimal(14, 2)
+  quantityAccepted Decimal           @db.Decimal(14, 2)
+  quantityRejected Decimal           @default(0.0) @db.Decimal(14, 2)
+  unitCost         Decimal           @db.Decimal(14, 2)
+  batchNumber      String?
+  goodsReceipt     GoodsReceipt      @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  poItem           PurchaseOrderItem? @relation(fields: [poItemId], references: [id])
+  product          Product           @relation(fields: [productId], references: [id])
+}
+
+// -----------------------------------------------------------------------------
+// Sales & Fulfillment (Assessment 02, 07, 12)
+// -----------------------------------------------------------------------------
+
+model SalesOrder {
+  id               String           @id @default(uuid())
+  soNumber         String           @unique // e.g. "SO-2026-001"
+  customerId       String
+  status           String           @default("DRAFT") // DRAFT, CONFIRMED, RESERVED, FULFILLED, INVOICED, CANCELLED
+  totalAmount      Decimal          @default(0.0) @db.Decimal(14, 2)
+  taxAmount        Decimal          @default(0.0) @db.Decimal(14, 2)
+  netAmount        Decimal          @default(0.0) @db.Decimal(14, 2)
+  shippingAddress  String?
+  expectedShipDate DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  customer         Customer         @relation(fields: [customerId], references: [id])
+  items            SalesOrderItem[]
+  invoices         Invoice[]
+}
+
+model SalesOrderItem {
+  id                String     @id @default(uuid())
+  soId              String
+  productId         String
+  quantityOrdered   Decimal    @db.Decimal(14, 2)
+  quantityFulfilled Decimal    @default(0.0) @db.Decimal(14, 2)
+  unitPrice         Decimal    @db.Decimal(14, 2)
+  taxRate           Decimal    @default(0.10) @db.Decimal(5, 2)
+  totalAmount       Decimal    @db.Decimal(14, 2)
+  salesOrder        SalesOrder @relation(fields: [soId], references: [id], onDelete: Cascade)
+  product           Product    @relation(fields: [productId], references: [id])
+}
+
+// -----------------------------------------------------------------------------
+// Billing, Invoicing & Payments (Assessment 02, 03, 07, 12)
+// -----------------------------------------------------------------------------
+
+model Invoice {
+  id              String        @id @default(uuid())
+  invoiceNumber   String        @unique // e.g. "INV-2026-001"
+  type            String        // ACCOUNTS_PAYABLE, ACCOUNTS_RECEIVABLE
+  vendorId        String?
+  customerId      String?
+  poId            String?
+  soId            String?
+  grnId           String?
+  status          String        @default("ISSUED") // DRAFT, ISSUED, PARTIALLY_PAID, PAID, VOIDED
+  subtotal        Decimal       @default(0.0) @db.Decimal(14, 2)
+  taxAmount       Decimal       @default(0.0) @db.Decimal(14, 2)
+  totalAmount     Decimal       @default(0.0) @db.Decimal(14, 2)
+  paidAmount      Decimal       @default(0.0) @db.Decimal(14, 2)
+  remainingAmount Decimal       @default(0.0) @db.Decimal(14, 2)
+  issueDate       DateTime      @default(now())
+  dueDate         DateTime
+  paymentTerms    String        @default("NET30")
+  matchStatus     String        @default("MATCHED") // UNMATCHED, MATCHED, DISCREPANCY
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  vendor          Vendor?       @relation(fields: [vendorId], references: [id])
+  customer        Customer?     @relation(fields: [customerId], references: [id])
+  purchaseOrder   PurchaseOrder? @relation(fields: [poId], references: [id])
+  salesOrder      SalesOrder?   @relation(fields: [soId], references: [id])
+  goodsReceipt    GoodsReceipt? @relation(fields: [grnId], references: [id])
+  items           InvoiceItem[]
+  payments        Payment[]
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  productId   String?
+  description String
+  quantity    Decimal  @db.Decimal(14, 2)
+  unitPrice   Decimal  @db.Decimal(14, 2)
+  taxRate     Decimal  @default(0.10) @db.Decimal(5, 2)
+  amount      Decimal  @db.Decimal(14, 2)
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  paymentNumber   String   @unique // e.g. "PAY-2026-001"
+  invoiceId       String
+  amount          Decimal  @db.Decimal(14, 2)
+  paymentDate     DateTime @default(now())
+  paymentMethod   String   @default("BANK_TRANSFER") // BANK_TRANSFER, CREDIT_CARD, CHECK, WIRE
+  referenceNumber String?
+  status          String   @default("COMPLETED") // PENDING, COMPLETED, FAILED, REFUNDED
+  idempotencyKey  String   @unique
+  notes           String?
+  createdAt       DateTime @default(now())
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+// -----------------------------------------------------------------------------
+// Approvals & Limits (Assessment 04, 07)
+// -----------------------------------------------------------------------------
+
+model ApprovalRequest {
+  id              String    @id @default(uuid())
+  documentType    String    // PO, INVOICE, PAYMENT, JOURNAL
+  documentId      String
+  requesterId     String
+  approverId      String?
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  requestedAmount Decimal   @default(0.0) @db.Decimal(14, 2)
+  approvalLimit   Decimal   @default(0.0) @db.Decimal(14, 2)
+  comments        String?
+  createdAt       DateTime  @default(now())
+  respondedAt     DateTime?
+  requester       User      @relation("Requester", fields: [requesterId], references: [id])
+  approver        User?     @relation("Approver", fields: [approverId], references: [id])
+}
+
+// -----------------------------------------------------------------------------
+// Audit Logs, System Health, Incidents & Notifications (Assessment 04, 14, 15)
+// -----------------------------------------------------------------------------
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  timestamp     DateTime @default(now())
+  userId        String?
+  userEmail     String?
+  action        String   // CREATE, UPDATE, DELETE, APPROVE, REJECT, POST, VOID, RECONCILE, LOGIN, INCIDENT_RESOLVE
+  entityType    String   // PO, GRN, INVOICE, PAYMENT, JOURNAL, STOCK, USER, SETTING
+  entityId      String?
+  beforeState   String?  // JSON string
+  afterState    String?  // JSON string
+  ipAddress     String?
+  requestId     String?
+  success       Boolean  @default(true)
+  failureReason String?
+  user          User?    @relation(fields: [userId], references: [id])
+}
+
+model SystemIncident {
+  id               String    @id @default(uuid())
+  code             String    @unique // e.g. "INC-101"
+  title            String
+  severity         String    // LOW, MEDIUM, HIGH, CRITICAL
+  status           String    @default("OPEN") // OPEN, INVESTIGATING, MITIGATED, RESOLVED
+  module           String    // FINANCE, INVENTORY, BILLING, PROCUREMENT, INTEGRATION
+  diagnosisDetails String
+  rootCause        String?
+  resolutionAction String?
+  resolvedBy       String?
+  resolvedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model SystemNotification {
+  id        String   @id @default(uuid())
+  userId    String?
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, WARNING, ALERT, SUCCESS
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
