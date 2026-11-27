@@ -164,6 +164,7 @@ export default function WorkflowsPage() {
         {/* Live Trace Stepper */}
         {p2pResult && (
           <div className="space-y-4">
+            {p2pResult.error && <p role="alert" className="text-amber text-xs">{p2pResult.error}</p>}
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase text-charcoal/60 dark:text-ivory/60">
                 Pipeline Execution Trace
@@ -253,17 +254,19 @@ export default function WorkflowsPage() {
         {o2cResult && (
           <div className="space-y-4">
             <span className="text-xs font-bold uppercase text-emerald">
-              O2C Workflow Completed Successfully!
+              {o2cResult.status === 'COMPLETED' ? 'O2C Workflow Completed Successfully!' : 'O2C workflow rolled back safely'}
             </span>
+            <p className="text-xs font-bold">Status: {o2cResult.status}</p>
+            {o2cResult.error && <p role="alert" className="text-amber text-xs">{o2cResult.error}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
               {o2cResult.trace?.map((step: any, idx: number) => (
                 <div key={idx} className="p-3.5 rounded-2xl bg-emerald/10 border border-emerald/30 text-emerald text-xs">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-mono text-[10px] font-bold">Step {idx + 1}</span>
-                    <CheckCircle2 size={16} />
+                    {step.status === 'SUCCESS' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} className="text-amber"/>}
                   </div>
                   <p className="font-bold text-charcoal dark:text-ivory">{step.step.replace(/_/g, ' ')}</p>
-                  <span className="text-[10px] font-semibold mt-1">SUCCESS</span>
+                  <span className="text-[10px] font-semibold mt-1">{step.status}</span>
                 </div>
               ))}
             </div>

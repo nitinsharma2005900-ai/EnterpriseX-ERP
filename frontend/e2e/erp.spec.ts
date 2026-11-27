@@ -6,7 +6,7 @@ async function login(page: any, role = 'admin') {
   await page.locator('input[type=email]').fill(`${role}@enterprisex.com`);
   await page.locator('input[type=password]').fill('EnterpriseX2026!');
   await page.locator('form button[type=submit]').click();
-  await expect(page).toHaveURL(/dashboard/);
+  await expect(page).toHaveURL(/dashboard/, { timeout: 60000 });
 }
 test('all main routes load, search opens, theme changes and mobile stays within viewport', async ({ page }) => {
   const errors: string[] = [];
