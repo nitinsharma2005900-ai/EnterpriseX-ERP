@@ -37,6 +37,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-enterprisex}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprisex}
+      DIRECT_DATABASE_URL: postgresql://${POSTGRES_USER:-enterprisex}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprisex}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
       SERVICE_TOKEN: ${SERVICE_TOKEN:?Set SERVICE_TOKEN}

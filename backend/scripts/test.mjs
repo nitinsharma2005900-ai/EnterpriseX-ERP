@@ -7,7 +7,7 @@ const base = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
 if (!base?.startsWith('postgres')) throw new Error('Tests require PostgreSQL');
 const schema = `test_${Date.now()}_${randomBytes(3).toString('hex')}`;
 const url = new URL(base); url.searchParams.set('schema', schema);
-const env = { ...process.env, NODE_ENV: 'test', DATABASE_URL: url.toString() };
+const env = { ...process.env, NODE_ENV: 'test', DATABASE_URL: url.toString(), DIRECT_DATABASE_URL: url.toString() };
 const control = new PrismaClient({ datasources: { db: { url: base } } });
 const run = (file, args) => {
   const result = spawnSync(process.execPath, [file, ...args], { env, stdio: 'inherit' });

@@ -29,7 +29,7 @@ try {
   decipher.setAuthTag(saved.subarray(12, 28));
   const recovered = JSON.parse(Buffer.concat([decipher.update(saved.subarray(28)), decipher.final()]).toString());
   await source.$executeRawUnsafe(`CREATE SCHEMA "${schema}"`);
-  const migration = spawnSync(process.execPath, ['node_modules/prisma/build/index.js','migrate','deploy'], { env: { ...process.env, DATABASE_URL: restoreUrl.toString() }, stdio: 'inherit' });
+  const migration = spawnSync(process.execPath, ['node_modules/prisma/build/index.js','migrate','deploy'], { env: { ...process.env, DATABASE_URL: restoreUrl.toString(), DIRECT_DATABASE_URL: restoreUrl.toString() }, stdio: 'inherit' });
   if (migration.status !== 0) throw new Error('Restore migration failed');
   let rows = 0;
   await restored.$transaction(async tx => {

@@ -15,6 +15,14 @@ export async function enqueueJob(id: string) {
   if (!queue) return;
   await queue.add('deliver', { id }, { jobId: id, attempts: 4, backoff: { type: 'exponential', delay: 1000 }, removeOnComplete: true, removeOnFail: 100 });
 }
+export async function retryJob(id: string) {
+  if (!queue) throw new Error('Background queue is unavailable');
+  const existing = await queue.getJob(id);
+  if (existing && await existing.isActive()) throw new Error('Job is already processing');
+  await existing?.remove();
+  await prisma.integrationJob.update({ where: { id }, data: { status: 'QUEUED', error: null } });
+  await enqueueJob(id);
+}
 export async function startWorker() {
   if (!process.env.REDIS_URL) return;
   connection = new IORedis(config.redisUrl, { maxRetriesPerRequest: null });
@@ -38,7 +46,7 @@ export async function startWorker() {
   for (const job of await prisma.integrationJob.findMany({ where: { status: { in: ['QUEUED','PROCESSING'] } }, take: 100 })) await enqueueJob(job.id);
 }
 export async function queueHealth() {
-  try { return connection ? await connection.ping() === 'PONG' ? 'UP' : 'DOWN' : 'NOT_CONFIGURED'; }
+  try { return connection ? await Promise.race([connection.ping(), new Promise(resolve => setTimeout(() => resolve('TIMEOUT'), 2500))]) === 'PONG' ? 'UP' : 'DOWN' : 'NOT_CONFIGURED'; }
   catch { return 'DOWN'; }
 }
 export async function stopWorker() {

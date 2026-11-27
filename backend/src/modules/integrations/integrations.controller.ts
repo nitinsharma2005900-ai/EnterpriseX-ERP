@@ -43,7 +43,7 @@ export class IntegrationsController {
 
   static async importAccounting(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const data = await IntegrationsService.importAccountingData(req.body);
+      const data = await IntegrationsService.importAccountingData(req.body, req.user!.id);
       res.json({ success: true, data });
     } catch (err) {
       next(err);

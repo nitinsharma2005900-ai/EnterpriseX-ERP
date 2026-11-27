@@ -6,7 +6,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 dotenv.config();
 
 if (process.env.NODE_ENV === 'production') {
-  for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL', 'SERVICE_TOKEN']) {
+  for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL', 'DIRECT_DATABASE_URL', 'SERVICE_TOKEN']) {
     if (!process.env[key] || (key.includes('SECRET') && process.env[key]!.length < 32)) throw new Error(`Missing or invalid production configuration: ${key}`);
   }
   if (!process.env.DATABASE_URL?.startsWith('postgres')) throw new Error('Production requires persistent PostgreSQL');

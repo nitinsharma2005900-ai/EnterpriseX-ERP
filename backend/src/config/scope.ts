@@ -10,7 +10,7 @@ export function modelScope(model?: string): any {
   const warehouse = user.role === 'WAREHOUSE_OPERATOR' ? { id: user.warehouseId || '__denied__' } : {};
   const po = { department: { organizationId: org, ...department }, requestedBy: { branchId: user.role === 'ERP_ADMINISTRATOR' ? undefined : user.branchId || undefined } };
   switch (model) {
-    case 'Account': case 'FinancialPeriod': case 'Vendor': case 'Customer': case 'Product': return { organizationId: org };
+    case 'Account': case 'FinancialPeriod': case 'Vendor': case 'Customer': case 'Product': case 'SystemIncident': case 'IntegrationJob': return { organizationId: org };
     case 'Department': return { organizationId: org, ...department };
     case 'Branch': return { organizationId: org, ...(user.role !== 'ERP_ADMINISTRATOR' ? { id: user.branchId || '__denied__' } : {}) };
     case 'Warehouse': return { branch: { organizationId: org, ...(user.role !== 'ERP_ADMINISTRATOR' ? { id: user.branchId || '__denied__' } : {}) }, ...warehouse };

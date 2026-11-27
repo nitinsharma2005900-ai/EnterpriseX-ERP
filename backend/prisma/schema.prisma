@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 // -----------------------------------------------------------------------------
@@ -478,6 +479,7 @@ model AuditLog {
 }
 
 model SystemIncident {
+  organizationId String?
   id               String    @id @default(uuid())
   code             String    @unique // e.g. "INC-101"
   title            String
@@ -527,6 +529,7 @@ model WorkflowRun {
 }
 
 model IntegrationJob {
+  organizationId String?
   id String @id @default(uuid())
   idempotencyKey String @unique
   type String

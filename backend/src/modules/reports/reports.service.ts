@@ -7,7 +7,8 @@ export async function financeRequest(path: string, payload: unknown): Promise<an
   try {
     const response = await fetch(`${config.pythonServiceUrl}/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Service-Token': config.serviceToken }, body: JSON.stringify(payload), signal: AbortSignal.timeout(15000) });
     if (!response.ok) throw new Error(`Finance service returned ${response.status}`);
-    return await response.json();
+    const result = await response.json();
+    return JSON.parse(JSON.stringify(result), (key, value) => typeof value === 'string' && !['code','account_code','period','month','sku'].includes(key) && /^-?\d+(?:\.\d+)?$/.test(value) ? Number(value) : value);
   } catch { throw new AppError('Finance processing service is unavailable; retry shortly', 503, 'FINANCE_UNAVAILABLE'); }
 }
 export class ReportsService {

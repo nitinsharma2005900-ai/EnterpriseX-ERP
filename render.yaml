@@ -1,0 +1,38 @@
+﻿services:
+  - type: web
+    name: enterprisex-api-nitinsharma
+    runtime: node
+    plan: free
+    region: singapore
+    autoDeploy: false
+    buildCommand: cd backend && npm ci --include=dev && npx prisma generate && npm run build
+    startCommand: cd backend && npm run migrate && npm run seed && npm start
+    healthCheckPath: /api/system/readiness
+    envVars:
+      - {key: NODE_ENV, value: production}
+      - {key: NODE_VERSION, value: 22.18.0}
+      - {key: PORT, value: '10000'}
+      - {key: DATABASE_URL, sync: false}
+      - {key: DIRECT_DATABASE_URL, sync: false}
+      - {key: JWT_SECRET, sync: false}
+      - {key: JWT_REFRESH_SECRET, sync: false}
+      - {key: SERVICE_TOKEN, sync: false}
+      - {key: REDIS_URL, sync: false}
+      - {key: FRONTEND_URL, value: 'https://enterprisex-erp.vercel.app'}
+      - {key: PYTHON_SERVICE_URL, value: 'https://enterprisex-finance-nitinsharma.onrender.com'}
+  - type: web
+    name: enterprisex-finance-nitinsharma
+    runtime: python
+    plan: free
+    region: singapore
+    autoDeploy: false
+    buildCommand: pip install -r python-service/requirements.txt
+    startCommand: uvicorn main:app --app-dir python-service --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - {key: PYTHON_VERSION, value: 3.13.9}
+      - {key: PORT, value: '10000'}
+      - {key: SERVICE_TOKEN, sync: false}
+# Frontend: Vercel project enterprisex-erp, rootDirectory frontend, API_URL points to Express.
+# PostgreSQL: dedicated Neon Free project, pooled runtime URL and direct migration URL.
+# Redis: isolated enterprisex-integration-v1 queue on the existing free Render Key Value instance.

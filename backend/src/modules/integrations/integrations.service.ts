@@ -83,7 +83,7 @@ export class IntegrationsService {
   /**
    * Assessment 08: Accounting Import (Mock importer with validation)
    */
-  static async importAccountingData(data: { accounts?: any[]; journals?: any[] }) {
+  static async importAccountingData(data: { accounts?: any[]; journals?: any[] }, actorId: string) {
     const schema = z.object({ accounts: z.array(z.object({ code: z.string().min(1), name: z.string().min(1), category: z.enum(['ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE']), subcategory: z.string().optional(), currency: z.string().length(3).optional() })).max(500).optional(), journals: z.array(z.any()).max(100).optional() });
     const parsed = schema.safeParse(data);
     if (!parsed.success) throw new AppError('Invalid accounting import', 400, 'VALIDATION_ERROR');
@@ -96,9 +96,9 @@ export class IntegrationsService {
         importedAccounts++;
       }
       for (const journal of parsed.data.journals || []) {
-        const valid = z.object({ entryNumber: z.string().min(1), periodId: z.string().min(1), description: z.string().min(1), createdById: z.string().min(1), lines: z.array(z.object({ accountId: z.string().min(1), debit: z.number().nonnegative(), credit: z.number().nonnegative() })).min(2) }).safeParse(journal);
+        const valid = z.object({ entryNumber: z.string().min(1), periodId: z.string().min(1), description: z.string().min(1), lines: z.array(z.object({ accountId: z.string().min(1), debit: z.number().nonnegative(), credit: z.number().nonnegative() })).min(2) }).safeParse(journal);
         if (!valid.success) throw new AppError('Invalid journal import', 400, 'VALIDATION_ERROR');
-        await AccountsService.createJournalEntry({ ...valid.data, referenceType: 'IMPORT' });
+        await AccountsService.createJournalEntry({ ...valid.data, createdById: actorId, referenceType: 'IMPORT' });
       }
       return { success: true, importedAccounts, importedJournals: parsed.data.journals?.length || 0 };
     });

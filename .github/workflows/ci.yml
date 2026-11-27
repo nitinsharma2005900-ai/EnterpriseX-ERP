@@ -24,6 +24,7 @@ jobs:
         options: --health-cmd "pg_isready -U enterprisex" --health-interval 5s --health-timeout 3s --health-retries 15
     env:
       DATABASE_URL: postgresql://enterprisex:ci-database-password@localhost:5432/enterprisex
+      DIRECT_DATABASE_URL: postgresql://enterprisex:ci-database-password@localhost:5432/enterprisex
       SERVICE_TOKEN: ci-service-token
       PYTHON_SERVICE_URL: http://localhost:8100
     steps:
@@ -70,6 +71,7 @@ jobs:
         ports: ['6379:6379']
     env:
       DATABASE_URL: postgresql://enterprisex:ci-database-password@localhost:5432/enterprisex
+      DIRECT_DATABASE_URL: postgresql://enterprisex:ci-database-password@localhost:5432/enterprisex
       SERVICE_TOKEN: ci-service-token
       JWT_SECRET: ci-only-jwt-secret-at-least-thirty-two-characters
       JWT_REFRESH_SECRET: ci-only-refresh-secret-at-least-thirty-two-characters
