@@ -1,61 +1,15 @@
-# EnterpriseX ERP Incident Simulation & Recovery Runbook
+# EnterpriseX incident and recovery runbook
 
-This document details procedures for diagnosing and remediating production incidents evaluated in **Assessment 15**.
+1. Check `/health`, then `/api/system/readiness`. Database status controls API readiness; finance and queue statuses are measured separately. A finance outage returns 503 for reports instead of invented totals.
+2. Sign in as ERP administrator and run `/api/system/diagnostics`. The scanner compares journal sides, stored account balances against posted lines, stock quantities against movements, inventory value against account 1400, duplicate invoice references, invoice/payment balances and missing recognition journals.
+3. Record the request ID, affected document IDs and detected issue types. Inspect structured service logs without copying tokens or credentials into issues.
+4. Use a controlled exercise through Admin & Incidents or `scripts/incident_simulation.ts`. Ledger imbalance, duplicate invoice, negative stock, stock valuation, partial workflow and inconsistent-data exercises operate inside a transaction that is rolled back. Captured diagnostics or a real database constraint rejection are stored as evidence. No persistent corruption is introduced.
+5. Resolve the exercise after inspecting its evidence. Resolution changes the incident record and writes audit history; it does not silently rewrite accounting history. Genuine production accounting corrections require an authorized, balanced corrective journal and a reconciled inventory adjustment.
+6. Complete P2P/O2C requests either commit together or roll back together. Retry with the same key and identical payload to retrieve the stored outcome. A changed payload requires a new key after reviewing the earlier result.
+7. Failed integration jobs persist attempts and their actual transport error. An administrator may POST `/api/integrations/jobs/:id/retry` after correcting configuration. An unset email transport fails explicitly; no sent-email claim is made.
+8. On Redis loss, PostgreSQL retains the outbox. Restarting the worker re-enqueues unfinished jobs. The free worker sleeps with its Render web service; use approved always-on worker infrastructure if continuous delivery is required.
+9. Migration lock errors on Neon: verify that DIRECT_DATABASE_URL is the unpooled URL. Do not disable advisory locking. Investigate the dedicated database's idle migration lock holder and retire the stale own-role session only after confirming no migration is running; rerun the committed migration normally.
+10. Run the encrypted backup/restore drill with `cd backend && node scripts/verify-backup.mjs`. The script preserves production data, uses an isolated restore schema, checks every table's row count and removes that schema afterward. Keep the encryption key outside source control and separate from transferred backups.
+11. Deploy only after all five GitHub Actions jobs pass. Apply additive migrations before compatible application startup. Release tags identify source checkpoints. Roll back application code only to a schema-compatible version; application rollback does not reverse database side effects.
 
----
-
-## Incident 1: General Ledger Double-Entry Imbalance
-
-### Symptoms:
-- Trial Balance report shows `is_balanced: false`.
-- Diagnostic scanner flags `JOURNAL_IMBALANCE`.
-
-### Root Cause:
-- Network disconnect or power interruption during legacy batch journal insertion, creating unbalanced debit/credit lines.
-
-### Remediation Procedure:
-1. Navigate to **Admin & Incidents** (`/admin`).
-2. Run **Refresh Diagnostics** to invoke `/api/system/diagnostics`.
-3. Locate the corrupted journal entry ID.
-4. Execute automated reconciliation script or click **Auto-Remediate** to synchronize balances.
-
----
-
-## Incident 2: Attempted Duplicate Vendor Invoice Posting
-
-### Symptoms:
-- Supplier system initiates automated retry without backoff.
-- HTTP `409 DUPLICATE_INVOICE` returned to caller.
-
-### Remediation Procedure:
-- EnterpriseX checks existing active AP invoices for the purchase order reference.
-- Duplicate payload is intercepted before database commit.
-- External supplier receives original invoice confirmation without duplicate accounts payable liability.
-
----
-
-## Incident 3: Attempted Negative Warehouse Stock Fulfillment
-
-### Symptoms:
-- Sales order fulfillment request exceeds available on-hand stock.
-- HTTP `400 NEGATIVE_STOCK` returned to warehouse operator.
-
-### Remediation Procedure:
-- Inventory service checks `quantityOnHand >= requestedQty` before decrementing.
-- Cycle recount is initiated via **Physical Stock Adjustment** modal (`/inventory`).
-- Purchase requisition is triggered to replenish buffer.
-
----
-
-## Incident 4: Partial Workflow Failure & Compensation Rollback
-
-### Symptoms:
-- Wire transfer settlement times out during P2P execution.
-
-### Automated Compensation Procedure:
-1. Workflow engine detects downstream failure.
-2. If payment was authorized, marks payment `REFUNDED`.
-3. If AP invoice was issued, sets invoice status to `VOIDED`.
-4. If goods were received into warehouse, decrements `StockLevel` and sets GRN status to `REJECTED`.
-5. Purchase Order status is set to `CANCELLED`.
-6. Audit log records `INCIDENT_RESOLVE` with full compensation trail.
+Private branch protection is unavailable for this private repository under GitHub Free (HTTP 403). CODEOWNERS and CI are configured; publishing the repository or upgrading the account requires a separate user decision. No checks were disabled to obtain a green result.

@@ -1,20 +1,26 @@
-# EnterpriseX Assessment Traceability Checklist
+# Project 08 assessment verification
 
-| Assessment # | Objective | Implementation Path | Verification & Test Evidence | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **01 – Frontend Architecture** | Responsive ERP dashboard, role views, zero blue | `frontend/src/app/*`, `tailwind.config.ts` | Next.js 14 App Router, Emerald palette (#167D58) | **COMPLETED** |
-| **02 – Backend Architecture** | Domain-separated REST APIs | `backend/src/modules/*` | 12 domain modules, typed routes and controllers | **COMPLETED** |
-| **03 – Database Design** | COA, journals, POs, GRN, periods | `backend/prisma/schema.prisma` | Dual-target PostgreSQL / SQLite schema, relational FKs | **COMPLETED** |
-| **04 – Authorization** | Org/Branch/Dept/Warehouse RBAC & limits | `backend/src/middleware/rbac.ts` | 6 role hierarchies, approval limits, immutable audit trail | **COMPLETED** |
-| **05 – Python Finance** | Journal validation, tax schedules, reconciliation | `python-service/app/services/*` | Deterministic Decimal engine, benchmark (8 pytest passed) | **COMPLETED** |
-| **06 – Business Reporting** | Consolidated analytics, query efficiency | `backend/src/modules/reports/*` | Trial balance, balance sheet, DSO, DPO, turnover metrics | **COMPLETED** |
-| **07 – Workflow Engine** | P2P and O2C workflows with compensation | `backend/src/modules/workflows/*` | Atomic multi-step transaction with safe rollback | **COMPLETED** |
-| **08 – ERP Integrations** | Sandbox email, PDF generation, vendor simulator | `backend/src/modules/integrations/*` | HTML/PDF generation, vendor mock, CSV/JSON export | **COMPLETED** |
-| **09 – Docker Infrastructure** | Multi-service containerization | `docker/Dockerfile.*`, `docker-compose.yml` | Healthchecks, private network, persistent volumes | **COMPLETED** |
-| **10 – Git & Governance** | CODEOWNERS, protected branches, migrations | `.github/CODEOWNERS`, `backend/prisma/*` | Domain code ownership mapping and migration policy | **COMPLETED** |
-| **11 – ERP CI/CD** | Automated quality pipelines | `.github/workflows/ci.yml` | GitHub Actions workflow for lint, tests, build | **COMPLETED** |
-| **12 – End-to-End Testing** | Automated integration test suites | `backend/tests/api.test.ts` | 9 Vitest/Supertest suites covering business invariants | **COMPLETED** |
-| **13 – API Documentation** | OpenAPI spec & Postman collection | `docs/API_DOCUMENTATION.md`, `/api/docs/spec` | Swagger spec endpoint and Postman collection v2.1 | **COMPLETED** |
-| **14 – ERP Deployment** | Production readiness, health endpoints | `backend/src/modules/health/*`, Docker configs | Liveness/readiness probes, environment variables | **COMPLETED** |
-| **15 – Incident Simulation** | Ledger imbalance, duplicate invoices, recovery | `scripts/incident_simulation.ts` | Automated diagnostic scanner & remediation triage | **COMPLETED** |
-| **Capstone Challenge** | Purchase-to-Pay workflow with compensation | `backend/src/modules/workflows/workflow.engine.ts` | Verified safe rollback of inventory, invoices, and PO | **COMPLETED** |
+Reviewed against the supplied 12-page Project 08 PDF on 27 November 2026. This matrix records implemented evidence and unresolved infrastructure/provider constraints. It does not award a score or treat unavailable paid features as completed.
+
+| Assessment | Implemented evidence | Qualification |
+| --- | --- | --- |
+| 01 Frontend | Modular App Router pages, shared shell, TanStack Query, role navigation and responsive tables | Preserves existing design |
+| 02 Backend | Domain services, validated routes, consistent errors, request IDs, filtering and pagination | `/api` and compatible `/api/v1` |
+| 03 Database | PostgreSQL schema, two versioned migrations, foreign keys, indexes, transaction/uniqueness/check constraints | SQLite is not used by the deployment |
+| 04 Authorization | JWT revocation, refresh rotation, scoped queries, approval caps, immutable audit | Six demo roles tested |
+| 05 Python processing | Decimal journal/tax/reconciliation/report engine, HTTP validation, benchmark | Python tests pass |
+| 06 Reporting | Authenticated FastAPI calculations from authoritative PostgreSQL data | No synthetic fallback metrics |
+| 07 Workflow engine | P2P/O2C, posting and atomic rollback, replay protection | Every controlled failure stage tested |
+| 08 Integrations | Durable Redis/BullMQ jobs, failed-job recovery, PDF storage, CSV/JSON import/export, explicit vendor sandbox | Outbound email transport must be configured |
+| 09 Docker | Three service images, private Compose network, health dependencies, persistent Postgres/Redis volumes | CI builds the containers |
+| 10 Governance | Valid CODEOWNERS, meaningful commits, versioned migrations and release tag | Private-repository branch protection is blocked by GitHub Free |
+| 11 CI/CD | Five required jobs: API/migrations, Python, React/build/security, browser/database, containers | Actual GitHub Actions evidence below |
+| 12 Testing | Success/invalid/authorization/duplicate/rollback/persistence/download tests and Chromium browser journeys | Real PostgreSQL, no mocked business APIs |
+| 13 API documentation | Generated OpenAPI 3.1, Postman collection, documented states and errors | `/api/docs/spec` |
+| 14 Deployment | Vercel, Render free services, Neon free PostgreSQL, private Redis, TLS, authenticated finance calls, restore drill | Free services sleep; private web ingress needs a paid plan |
+| 15 Incident handling | Actual isolated corruption or constraint exercises, scanner evidence, rollback and resolution records | Six incident types tested |
+
+
+Evidence: `backend/tests/api.test.ts`, `python-service/tests/`, `frontend/tests/`, `frontend/e2e/erp.spec.ts`, versioned Prisma migrations, `.github/workflows/ci.yml`, `docs/test-results.json`, and `docs/backup-verification.json`.
+
+Outbound email delivery is not configured. Protected branches are unavailable on GitHub Free for this private repository. Render free web ingress is public TLS with service authentication, and its worker sleeps with the web process. These qualifications apply to Assessments 08, 10 and 14; they are not hidden by mocks or disabled checks.

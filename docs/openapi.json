@@ -1,0 +1,4879 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "EnterpriseX ERP API",
+    "version": "1.1.0",
+    "description": "POST creates orders. PO: PENDING_APPROVAL -> APPROVED -> PARTIALLY_RECEIVED -> COMPLETED; rejection only while pending. SO: CONFIRMED -> RESERVED -> FULFILLED -> INVOICED. Invoice: ISSUED -> PARTIALLY_PAID -> PAID. Atomic workflows include inventory and accounting; failures roll back all business mutations. All monetary amounts are USD."
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "summary": "POST /api/auth/login",
+        "operationId": "post__api_auth_login",
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "email": {},
+                  "password": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "summary": "POST /api/auth/refresh",
+        "operationId": "post__api_auth_refresh",
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "refreshToken": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "refreshToken"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/auth/demo-accounts": {
+      "get": {
+        "summary": "GET /api/auth/demo-accounts",
+        "operationId": "get__api_auth_demo_accounts",
+        "security": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "summary": "GET /api/auth/me",
+        "operationId": "get__api_auth_me",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "POST /api/auth/logout",
+        "operationId": "post__api_auth_logout",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/finance/accounts": {
+      "get": {
+        "summary": "GET /api/finance/accounts",
+        "operationId": "get__api_finance_accounts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/finance/accounts",
+        "operationId": "post__api_finance_accounts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "ASSET",
+                      "LIABILITY",
+                      "EQUITY",
+                      "REVENUE",
+                      "EXPENSE"
+                    ]
+                  },
+                  "subcategory": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "currency": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 3
+                  }
+                },
+                "required": [
+                  "code",
+                  "name",
+                  "category"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/finance/periods": {
+      "get": {
+        "summary": "GET /api/finance/periods",
+        "operationId": "get__api_finance_periods",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/finance/periods",
+        "operationId": "post__api_finance_periods",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "startDate": {},
+                  "endDate": {}
+                },
+                "required": [
+                  "name",
+                  "startDate",
+                  "endDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/finance/periods/{id}/close": {
+      "patch": {
+        "summary": "PATCH /api/finance/periods/:id/close",
+        "operationId": "patch__api_finance_periods__id_close",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/finance/journals": {
+      "get": {
+        "summary": "GET /api/finance/journals",
+        "operationId": "get__api_finance_journals",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/finance/journals",
+        "operationId": "post__api_finance_journals",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "entryNumber": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "date": {},
+                  "periodId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "referenceType": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "referenceId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "lines": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "accountId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        },
+                        "debit": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "credit": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000
+                        }
+                      },
+                      "required": [
+                        "accountId",
+                        "debit",
+                        "credit"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "entryNumber",
+                  "periodId",
+                  "referenceType",
+                  "description",
+                  "lines"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/finance/general-ledger": {
+      "get": {
+        "summary": "GET /api/finance/general-ledger",
+        "operationId": "get__api_finance_general_ledger",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/vendors": {
+      "get": {
+        "summary": "GET /api/vendors",
+        "operationId": "get__api_vendors",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/vendors",
+        "operationId": "post__api_vendors",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "address": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "taxNumber": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "paymentTerms": {
+                    "type": "string",
+                    "enum": [
+                      "NET15",
+                      "NET30",
+                      "NET60"
+                    ]
+                  },
+                  "rating": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 5
+                  }
+                },
+                "required": [
+                  "code",
+                  "name",
+                  "email"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/vendors/{id}": {
+      "get": {
+        "summary": "GET /api/vendors/:id",
+        "operationId": "get__api_vendors__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "put": {
+        "summary": "PUT /api/vendors/:id",
+        "operationId": "put__api_vendors__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "address": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "SUSPENDED",
+                      "INACTIVE"
+                    ]
+                  },
+                  "paymentTerms": {
+                    "type": "string",
+                    "enum": [
+                      "NET15",
+                      "NET30",
+                      "NET60"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/vendors/:id",
+        "operationId": "patch__api_vendors__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "address": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "paymentTerms": {
+                    "type": "string",
+                    "enum": [
+                      "NET15",
+                      "NET30",
+                      "NET60"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "SUSPENDED",
+                      "INACTIVE"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/vendors/:id",
+        "operationId": "delete__api_vendors__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/customers": {
+      "get": {
+        "summary": "GET /api/customers",
+        "operationId": "get__api_customers",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/customers",
+        "operationId": "post__api_customers",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "address": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "taxNumber": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "creditLimit": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000
+                  },
+                  "paymentTerms": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "code",
+                  "name",
+                  "email"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/customers/{id}": {
+      "get": {
+        "summary": "GET /api/customers/:id",
+        "operationId": "get__api_customers__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/customers/:id",
+        "operationId": "patch__api_customers__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "address": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "paymentTerms": {
+                    "type": "string",
+                    "enum": [
+                      "NET15",
+                      "NET30",
+                      "NET60"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "SUSPENDED",
+                      "INACTIVE"
+                    ]
+                  },
+                  "creditLimit": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/customers/:id",
+        "operationId": "delete__api_customers__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/inventory/products": {
+      "get": {
+        "summary": "GET /api/inventory/products",
+        "operationId": "get__api_inventory_products",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/inventory/products",
+        "operationId": "post__api_inventory_products",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "sku": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "category": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "uom": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "unitPrice": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000
+                  },
+                  "standardCost": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000
+                  },
+                  "reorderPoint": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000
+                  }
+                },
+                "required": [
+                  "sku",
+                  "name",
+                  "unitPrice",
+                  "standardCost"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/inventory/products/{id}": {
+      "get": {
+        "summary": "GET /api/inventory/products/:id",
+        "operationId": "get__api_inventory_products__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "patch": {
+        "summary": "PATCH /api/inventory/products/:id",
+        "operationId": "patch__api_inventory_products__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "unitPrice": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000
+                  },
+                  "reorderPoint": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/inventory/products/:id",
+        "operationId": "delete__api_inventory_products__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/inventory/warehouses": {
+      "get": {
+        "summary": "GET /api/inventory/warehouses",
+        "operationId": "get__api_inventory_warehouses",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/inventory/stock-levels": {
+      "get": {
+        "summary": "GET /api/inventory/stock-levels",
+        "operationId": "get__api_inventory_stock_levels",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/inventory/stock-movements": {
+      "get": {
+        "summary": "GET /api/inventory/stock-movements",
+        "operationId": "get__api_inventory_stock_movements",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/inventory/adjust": {
+      "post": {
+        "summary": "POST /api/inventory/adjust",
+        "operationId": "post__api_inventory_adjust",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "productId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "warehouseId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "quantityDelta": {
+                    "type": "number",
+                    "minimum": -1000000000,
+                    "maximum": 1000000000
+                  },
+                  "notes": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "productId",
+                  "warehouseId",
+                  "quantityDelta"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/procurement/purchase-orders": {
+      "get": {
+        "summary": "GET /api/procurement/purchase-orders",
+        "operationId": "get__api_procurement_purchase_orders",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/procurement/purchase-orders",
+        "operationId": "post__api_procurement_purchase_orders",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "vendorId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "departmentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "expectedDeliveryDate": {},
+                  "terms": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "items": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "productId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "quantityOrdered": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "unitPrice": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "taxRate": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "productId",
+                        "quantityOrdered",
+                        "unitPrice"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "vendorId",
+                  "items"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/procurement/purchase-orders/{id}": {
+      "get": {
+        "summary": "GET /api/procurement/purchase-orders/:id",
+        "operationId": "get__api_procurement_purchase_orders__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/procurement/purchase-orders/{id}/approve": {
+      "patch": {
+        "summary": "PATCH /api/procurement/purchase-orders/:id/approve",
+        "operationId": "patch__api_procurement_purchase_orders__id_approve",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "comments": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/procurement/purchase-orders/{id}/reject": {
+      "patch": {
+        "summary": "PATCH /api/procurement/purchase-orders/:id/reject",
+        "operationId": "patch__api_procurement_purchase_orders__id_reject",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "comments": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "comments"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/logistics/goods-receipts": {
+      "get": {
+        "summary": "GET /api/logistics/goods-receipts",
+        "operationId": "get__api_logistics_goods_receipts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/logistics/goods-receipts",
+        "operationId": "post__api_logistics_goods_receipts",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "poId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "warehouseId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "carrier": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "trackingNumber": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "notes": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "items": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "poItemId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "productId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "quantityReceived": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "quantityAccepted": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "quantityRejected": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "unitCost": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "batchNumber": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        }
+                      },
+                      "required": [
+                        "poItemId",
+                        "productId",
+                        "quantityReceived",
+                        "quantityAccepted",
+                        "unitCost"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "poId",
+                  "warehouseId",
+                  "items"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/logistics/goods-receipts/{id}": {
+      "get": {
+        "summary": "GET /api/logistics/goods-receipts/:id",
+        "operationId": "get__api_logistics_goods_receipts__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/sales/sales-orders": {
+      "get": {
+        "summary": "GET /api/sales/sales-orders",
+        "operationId": "get__api_sales_sales_orders",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/sales/sales-orders",
+        "operationId": "post__api_sales_sales_orders",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "customerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "shippingAddress": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "expectedShipDate": {},
+                  "items": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "productId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "quantityOrdered": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "unitPrice": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "taxRate": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "productId",
+                        "quantityOrdered",
+                        "unitPrice"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "customerId",
+                  "items"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/sales/sales-orders/{id}": {
+      "get": {
+        "summary": "GET /api/sales/sales-orders/:id",
+        "operationId": "get__api_sales_sales_orders__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/sales/sales-orders/{id}/reserve": {
+      "post": {
+        "summary": "POST /api/sales/sales-orders/:id/reserve",
+        "operationId": "post__api_sales_sales_orders__id_reserve",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "warehouseId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "warehouseId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/sales/sales-orders/{id}/fulfill": {
+      "post": {
+        "summary": "POST /api/sales/sales-orders/:id/fulfill",
+        "operationId": "post__api_sales_sales_orders__id_fulfill",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "warehouseId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "warehouseId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/billing/invoices": {
+      "get": {
+        "summary": "GET /api/billing/invoices",
+        "operationId": "get__api_billing_invoices",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/billing/invoices/{id}": {
+      "get": {
+        "summary": "GET /api/billing/invoices/:id",
+        "operationId": "get__api_billing_invoices__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/billing/invoices/ap": {
+      "post": {
+        "summary": "POST /api/billing/invoices/ap",
+        "operationId": "post__api_billing_invoices_ap",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "poId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "grnId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "invoiceNumber": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "dueDate": {},
+                  "items": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "productId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        },
+                        "quantity": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "unitPrice": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "taxRate": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "productId",
+                        "description",
+                        "quantity",
+                        "unitPrice"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "poId",
+                  "items"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/billing/invoices/ar": {
+      "post": {
+        "summary": "POST /api/billing/invoices/ar",
+        "operationId": "post__api_billing_invoices_ar",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "soId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "soId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/billing/payments": {
+      "post": {
+        "summary": "POST /api/billing/payments",
+        "operationId": "post__api_billing_payments",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "invoiceId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "amount": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 1000000000
+                  },
+                  "paymentMethod": {
+                    "type": "string",
+                    "enum": [
+                      "BANK_TRANSFER",
+                      "CREDIT_CARD",
+                      "CHECK",
+                      "WIRE"
+                    ]
+                  },
+                  "idempotencyKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "referenceNumber": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "notes": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "invoiceId",
+                  "amount",
+                  "idempotencyKey"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/workflows/purchase-to-pay": {
+      "post": {
+        "summary": "POST /api/workflows/purchase-to-pay",
+        "operationId": "post__api_workflows_purchase_to_pay",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "vendorId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "departmentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "warehouseId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "items": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "productId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "quantity": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "unitPrice": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000
+                        }
+                      },
+                      "required": [
+                        "productId",
+                        "quantity",
+                        "unitPrice"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "idempotencyKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "simulateFailureAt": {
+                    "type": "string",
+                    "enum": [
+                      "NONE",
+                      "APPROVAL",
+                      "RECEIPT",
+                      "INVOICE",
+                      "PAYMENT"
+                    ]
+                  }
+                },
+                "required": [
+                  "vendorId",
+                  "departmentId",
+                  "warehouseId",
+                  "items",
+                  "idempotencyKey"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/workflows/order-to-cash": {
+      "post": {
+        "summary": "POST /api/workflows/order-to-cash",
+        "operationId": "post__api_workflows_order_to_cash",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "customerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "warehouseId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "items": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "productId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "quantity": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000000000
+                        },
+                        "unitPrice": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000
+                        }
+                      },
+                      "required": [
+                        "productId",
+                        "quantity",
+                        "unitPrice"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "idempotencyKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "simulateFailureAt": {
+                    "type": "string",
+                    "enum": [
+                      "NONE",
+                      "RESERVATION",
+                      "FULFILLMENT",
+                      "INVOICE",
+                      "PAYMENT"
+                    ]
+                  }
+                },
+                "required": [
+                  "customerId",
+                  "warehouseId",
+                  "items",
+                  "idempotencyKey"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/integrations/email/send": {
+      "post": {
+        "summary": "POST /api/integrations/email/send",
+        "operationId": "post__api_integrations_email_send",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "subject": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "idempotencyKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "to",
+                  "subject",
+                  "body"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/integrations/email/queue": {
+      "get": {
+        "summary": "GET /api/integrations/email/queue",
+        "operationId": "get__api_integrations_email_queue",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/integrations/jobs/{id}/retry": {
+      "post": {
+        "summary": "POST /api/integrations/jobs/:id/retry",
+        "operationId": "post__api_integrations_jobs__id_retry",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/integrations/vendor-simulator/dispatch": {
+      "post": {
+        "summary": "POST /api/integrations/vendor-simulator/dispatch",
+        "operationId": "post__api_integrations_vendor_simulator_dispatch",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "poNumber": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "poNumber"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/integrations/accounting/export": {
+      "get": {
+        "summary": "GET /api/integrations/accounting/export",
+        "operationId": "get__api_integrations_accounting_export",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/integrations/accounting/import": {
+      "post": {
+        "summary": "POST /api/integrations/accounting/import",
+        "operationId": "post__api_integrations_accounting_import",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "summary": "GET /api/audit",
+        "operationId": "get__api_audit",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/reports/trial-balance": {
+      "get": {
+        "summary": "GET /api/reports/trial-balance",
+        "operationId": "get__api_reports_trial_balance",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/reports/executive-analytics": {
+      "get": {
+        "summary": "GET /api/reports/executive-analytics",
+        "operationId": "get__api_reports_executive_analytics",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/system/health": {
+      "get": {
+        "summary": "GET /api/system/health",
+        "operationId": "get__api_system_health",
+        "security": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/system/readiness": {
+      "get": {
+        "summary": "GET /api/system/readiness",
+        "operationId": "get__api_system_readiness",
+        "security": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/system/diagnostics": {
+      "get": {
+        "summary": "GET /api/system/diagnostics",
+        "operationId": "get__api_system_diagnostics",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/system/incidents": {
+      "get": {
+        "summary": "GET /api/system/incidents",
+        "operationId": "get__api_system_incidents",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/system/incidents/simulate": {
+      "post": {
+        "summary": "POST /api/system/incidents/simulate",
+        "operationId": "post__api_system_incidents_simulate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "LEDGER_IMBALANCE",
+                      "DUPLICATE_INVOICE",
+                      "NEGATIVE_STOCK",
+                      "PARTIAL_WORKFLOW",
+                      "STOCK_VALUATION",
+                      "INCONSISTENT_DATA"
+                    ]
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/system/incidents/{id}/resolve": {
+      "patch": {
+        "summary": "PATCH /api/system/incidents/:id/resolve",
+        "operationId": "patch__api_system_incidents__id_resolve",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "notes": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/finance/accounts/{id}": {
+      "patch": {
+        "summary": "PATCH /api/finance/accounts/:id",
+        "operationId": "patch__api_finance_accounts__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "subcategory": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/finance/accounts/:id",
+        "operationId": "delete__api_finance_accounts__id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "summary": "GET /api/notifications",
+        "operationId": "get__api_notifications",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation; JSON envelope with success and data"
+          },
+          "201": {
+            "description": "Resource created"
+          },
+          "400": {
+            "description": "Validation or business state error"
+          },
+          "401": {
+            "description": "Missing, expired or revoked session"
+          },
+          "403": {
+            "description": "Role, resource scope or approval limit denied"
+          },
+          "404": {
+            "description": "Resource not found in authorized scope"
+          },
+          "409": {
+            "description": "Duplicate, conflicting idempotency key or record in use"
+          },
+          "503": {
+            "description": "Required processing service unavailable"
+          }
+        }
+      }
+    },
+    "/api/documents/{type}/{id}/pdf": {
+      "get": {
+        "summary": "Authenticated binary PDF download",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "po",
+                "grn",
+                "invoice"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF attachment",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

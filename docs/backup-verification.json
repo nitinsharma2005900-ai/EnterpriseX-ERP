@@ -1,8 +1,8 @@
 {
   "status": "PASSED",
   "tables": 31,
-  "rows": 93,
-  "encryptedBackup": "../.backups/EnterpriseX-1795771004091.enc",
+  "rows": 311,
+  "encryptedBackup": "../.backups/EnterpriseX-1795772623503.enc",
   "restoredToIsolatedSchema": true,
   "productionDataModified": false
 }

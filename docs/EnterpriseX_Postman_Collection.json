@@ -1,67 +1,1171 @@
 {
   "info": {
-    "_postman_id": "enterprisex-erp-collection-v1",
-    "name": "EnterpriseX ERP API Collection",
-    "description": "Complete Postman collection for EnterpriseX: Authentication, Finance, Procurement, Inventory, Sales, Billing, and Workflows.",
+    "name": "EnterpriseX verified ERP API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://enterprisex-erp.vercel.app"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "id",
+      "value": ""
+    },
+    {
+      "key": "vendorId",
+      "value": ""
+    },
+    {
+      "key": "customerId",
+      "value": ""
+    },
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "warehouseId",
+      "value": ""
+    },
+    {
+      "key": "departmentId",
+      "value": ""
+    },
+    {
+      "key": "poId",
+      "value": ""
+    },
+    {
+      "key": "poItemId",
+      "value": ""
+    },
+    {
+      "key": "grnId",
+      "value": ""
+    },
+    {
+      "key": "soId",
+      "value": ""
+    },
+    {
+      "key": "invoiceId",
+      "value": ""
+    },
+    {
+      "key": "periodId",
+      "value": ""
+    },
+    {
+      "key": "accountId",
+      "value": ""
+    },
+    {
+      "key": "type",
+      "value": "po"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
   },
   "item": [
     {
-      "name": "Auth - Login as Admin",
-      "request": {
-        "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"email\": \"admin@enterprisex.com\",\n  \"password\": \"EnterpriseX2026!\"\n}"
-        },
-        "url": { "raw": "http://localhost:5000/api/auth/login", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "auth", "login"] }
-      }
-    },
-    {
-      "name": "Auth - Get Demo Accounts",
-      "request": {
-        "method": "GET",
-        "url": { "raw": "http://localhost:5000/api/auth/demo-accounts", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "auth", "demo-accounts"] }
-      }
-    },
-    {
-      "name": "Finance - List Chart of Accounts",
-      "request": {
-        "method": "GET",
-        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-        "url": { "raw": "http://localhost:5000/api/finance/accounts", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "finance", "accounts"] }
-      }
-    },
-    {
-      "name": "Procurement - List Purchase Orders",
-      "request": {
-        "method": "GET",
-        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-        "url": { "raw": "http://localhost:5000/api/procurement/purchase-orders", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "procurement", "purchase-orders"] }
-      }
-    },
-    {
-      "name": "Billing - Record Idempotent Payment",
+      "name": "POST /api/auth/login",
       "request": {
         "method": "POST",
         "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
         ],
+        "url": "{{baseUrl}}/api/auth/login",
+        "description": "POST /api/auth/login",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"amount\": 500.00,\n  \"idempotencyKey\": \"POSTMAN-PAY-001\",\n  \"paymentMethod\": \"BANK_TRANSFER\"\n}"
+          "raw": "{\"email\": \"admin@enterprisex.com\", \"password\": \"EnterpriseX2026!\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
-        "url": { "raw": "http://localhost:5000/api/billing/payments", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "billing", "payments"] }
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const data = pm.response.json().data;",
+              "pm.collectionVariables.set(\"token\", data.accessToken);",
+              "pm.collectionVariables.set(\"refreshToken\", data.refreshToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST /api/auth/refresh",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/refresh",
+        "description": "POST /api/auth/refresh",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
       }
     },
     {
-      "name": "System - Run Integrity Diagnostics",
+      "name": "GET /api/auth/demo-accounts",
       "request": {
         "method": "GET",
-        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-        "url": { "raw": "http://localhost:5000/api/system/diagnostics", "protocol": "http", "host": ["localhost"], "port": "5000", "path": ["api", "system", "diagnostics"] }
+        "header": [],
+        "url": "{{baseUrl}}/api/auth/demo-accounts",
+        "description": "GET /api/auth/demo-accounts"
+      }
+    },
+    {
+      "name": "GET /api/auth/me",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/auth/me",
+        "description": "GET /api/auth/me"
+      }
+    },
+    {
+      "name": "POST /api/auth/logout",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/auth/logout",
+        "description": "POST /api/auth/logout"
+      }
+    },
+    {
+      "name": "GET /api/finance/accounts",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/finance/accounts",
+        "description": "GET /api/finance/accounts"
+      }
+    },
+    {
+      "name": "POST /api/finance/accounts",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/finance/accounts",
+        "description": "POST /api/finance/accounts",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"Example code\",\n  \"name\": \"Example name\",\n  \"category\": \"ASSET\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/finance/periods",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/finance/periods",
+        "description": "GET /api/finance/periods"
+      }
+    },
+    {
+      "name": "POST /api/finance/periods",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/finance/periods",
+        "description": "POST /api/finance/periods",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Example name\",\n  \"startDate\": \"2026-11-27T00:00:00.000Z\",\n  \"endDate\": \"2026-11-27T00:00:00.000Z\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "PATCH /api/finance/periods/{id}/close",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": "{{baseUrl}}/api/finance/periods/{{id}}/close",
+        "description": "PATCH /api/finance/periods/:id/close"
+      }
+    },
+    {
+      "name": "GET /api/finance/journals",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/finance/journals",
+        "description": "GET /api/finance/journals"
+      }
+    },
+    {
+      "name": "POST /api/finance/journals",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/finance/journals",
+        "description": "POST /api/finance/journals",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"entryNumber\": \"Example entryNumber\",\n  \"periodId\": \"{{periodId}}\",\n  \"referenceType\": \"Example referenceType\",\n  \"description\": \"Example description\",\n  \"lines\": [\n    {\n      \"accountId\": \"{{accountId}}\",\n      \"debit\": 1,\n      \"credit\": 1\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/finance/general-ledger",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/finance/general-ledger",
+        "description": "GET /api/finance/general-ledger"
+      }
+    },
+    {
+      "name": "GET /api/vendors",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/vendors",
+        "description": "GET /api/vendors"
+      }
+    },
+    {
+      "name": "POST /api/vendors",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/vendors",
+        "description": "POST /api/vendors",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"Example code\",\n  \"name\": \"Example name\",\n  \"email\": \"user@example.invalid\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/vendors/{id}",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/vendors/{{id}}",
+        "description": "GET /api/vendors/:id"
+      }
+    },
+    {
+      "name": "PUT /api/vendors/{id}",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/vendors/{{id}}",
+        "description": "PUT /api/vendors/:id",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "PATCH /api/vendors/{id}",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/vendors/{{id}}",
+        "description": "PATCH /api/vendors/:id",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "DELETE /api/vendors/{id}",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/vendors/{{id}}",
+        "description": "DELETE /api/vendors/:id"
+      }
+    },
+    {
+      "name": "GET /api/customers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/customers",
+        "description": "GET /api/customers"
+      }
+    },
+    {
+      "name": "POST /api/customers",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/customers",
+        "description": "POST /api/customers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"Example code\",\n  \"name\": \"Example name\",\n  \"email\": \"user@example.invalid\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/customers/{id}",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/customers/{{id}}",
+        "description": "GET /api/customers/:id"
+      }
+    },
+    {
+      "name": "PATCH /api/customers/{id}",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/customers/{{id}}",
+        "description": "PATCH /api/customers/:id",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "DELETE /api/customers/{id}",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/customers/{{id}}",
+        "description": "DELETE /api/customers/:id"
+      }
+    },
+    {
+      "name": "GET /api/inventory/products",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/inventory/products",
+        "description": "GET /api/inventory/products"
+      }
+    },
+    {
+      "name": "POST /api/inventory/products",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/inventory/products",
+        "description": "POST /api/inventory/products",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sku\": \"Example sku\",\n  \"name\": \"Example name\",\n  \"unitPrice\": 1,\n  \"standardCost\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/inventory/products/{id}",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/inventory/products/{{id}}",
+        "description": "GET /api/inventory/products/:id"
+      }
+    },
+    {
+      "name": "PATCH /api/inventory/products/{id}",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/inventory/products/{{id}}",
+        "description": "PATCH /api/inventory/products/:id",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "DELETE /api/inventory/products/{id}",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/inventory/products/{{id}}",
+        "description": "DELETE /api/inventory/products/:id"
+      }
+    },
+    {
+      "name": "GET /api/inventory/warehouses",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/inventory/warehouses",
+        "description": "GET /api/inventory/warehouses"
+      }
+    },
+    {
+      "name": "GET /api/inventory/stock-levels",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/inventory/stock-levels",
+        "description": "GET /api/inventory/stock-levels"
+      }
+    },
+    {
+      "name": "GET /api/inventory/stock-movements",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/inventory/stock-movements",
+        "description": "GET /api/inventory/stock-movements"
+      }
+    },
+    {
+      "name": "POST /api/inventory/adjust",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/inventory/adjust",
+        "description": "POST /api/inventory/adjust",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"quantityDelta\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/procurement/purchase-orders",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/procurement/purchase-orders",
+        "description": "GET /api/procurement/purchase-orders"
+      }
+    },
+    {
+      "name": "POST /api/procurement/purchase-orders",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/procurement/purchase-orders",
+        "description": "POST /api/procurement/purchase-orders",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"vendorId\": \"{{vendorId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantityOrdered\": 1,\n      \"unitPrice\": 1\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/procurement/purchase-orders/{id}",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/procurement/purchase-orders/{{id}}",
+        "description": "GET /api/procurement/purchase-orders/:id"
+      }
+    },
+    {
+      "name": "PATCH /api/procurement/purchase-orders/{id}/approve",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/procurement/purchase-orders/{{id}}/approve",
+        "description": "PATCH /api/procurement/purchase-orders/:id/approve",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "PATCH /api/procurement/purchase-orders/{id}/reject",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/procurement/purchase-orders/{{id}}/reject",
+        "description": "PATCH /api/procurement/purchase-orders/:id/reject",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"comments\": \"Example comments\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/logistics/goods-receipts",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/logistics/goods-receipts",
+        "description": "GET /api/logistics/goods-receipts"
+      }
+    },
+    {
+      "name": "POST /api/logistics/goods-receipts",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/logistics/goods-receipts",
+        "description": "POST /api/logistics/goods-receipts",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"poId\": \"{{poId}}\",\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"items\": [\n    {\n      \"poItemId\": \"{{poItemId}}\",\n      \"productId\": \"{{productId}}\",\n      \"quantityReceived\": 1,\n      \"quantityAccepted\": 1,\n      \"unitCost\": 1\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/logistics/goods-receipts/{id}",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/logistics/goods-receipts/{{id}}",
+        "description": "GET /api/logistics/goods-receipts/:id"
+      }
+    },
+    {
+      "name": "GET /api/sales/sales-orders",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/sales/sales-orders",
+        "description": "GET /api/sales/sales-orders"
+      }
+    },
+    {
+      "name": "POST /api/sales/sales-orders",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/sales/sales-orders",
+        "description": "POST /api/sales/sales-orders",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantityOrdered\": 1,\n      \"unitPrice\": 1\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/sales/sales-orders/{id}",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/sales/sales-orders/{{id}}",
+        "description": "GET /api/sales/sales-orders/:id"
+      }
+    },
+    {
+      "name": "POST /api/sales/sales-orders/{id}/reserve",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/sales/sales-orders/{{id}}/reserve",
+        "description": "POST /api/sales/sales-orders/:id/reserve",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"warehouseId\": \"{{warehouseId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "POST /api/sales/sales-orders/{id}/fulfill",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/sales/sales-orders/{{id}}/fulfill",
+        "description": "POST /api/sales/sales-orders/:id/fulfill",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"warehouseId\": \"{{warehouseId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/billing/invoices",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/billing/invoices",
+        "description": "GET /api/billing/invoices"
+      }
+    },
+    {
+      "name": "GET /api/billing/invoices/{id}",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/billing/invoices/{{id}}",
+        "description": "GET /api/billing/invoices/:id"
+      }
+    },
+    {
+      "name": "POST /api/billing/invoices/ap",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/billing/invoices/ap",
+        "description": "POST /api/billing/invoices/ap",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"poId\": \"{{poId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"description\": \"Example description\",\n      \"quantity\": 1,\n      \"unitPrice\": 1\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "POST /api/billing/invoices/ar",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/billing/invoices/ar",
+        "description": "POST /api/billing/invoices/ar",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"soId\": \"{{soId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "POST /api/billing/payments",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/billing/payments",
+        "description": "POST /api/billing/payments",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"amount\": 1,\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "POST /api/workflows/purchase-to-pay",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/workflows/purchase-to-pay",
+        "description": "POST /api/workflows/purchase-to-pay",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"vendorId\": \"{{vendorId}}\",\n  \"departmentId\": \"{{departmentId}}\",\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1,\n      \"unitPrice\": 1\n    }\n  ],\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "POST /api/workflows/order-to-cash",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/workflows/order-to-cash",
+        "description": "POST /api/workflows/order-to-cash",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"warehouseId\": \"{{warehouseId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1,\n      \"unitPrice\": 1\n    }\n  ],\n  \"idempotencyKey\": \"{{$guid}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "POST /api/integrations/email/send",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/integrations/email/send",
+        "description": "POST /api/integrations/email/send",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"to\": \"Example to\",\n  \"subject\": \"Example subject\",\n  \"body\": \"Example body\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/integrations/email/queue",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/integrations/email/queue",
+        "description": "GET /api/integrations/email/queue"
+      }
+    },
+    {
+      "name": "POST /api/integrations/jobs/{id}/retry",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/integrations/jobs/{{id}}/retry",
+        "description": "POST /api/integrations/jobs/:id/retry"
+      }
+    },
+    {
+      "name": "POST /api/integrations/vendor-simulator/dispatch",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/integrations/vendor-simulator/dispatch",
+        "description": "POST /api/integrations/vendor-simulator/dispatch",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"poNumber\": \"Example poNumber\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "GET /api/integrations/accounting/export",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/integrations/accounting/export",
+        "description": "GET /api/integrations/accounting/export"
+      }
+    },
+    {
+      "name": "POST /api/integrations/accounting/import",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/integrations/accounting/import",
+        "description": "POST /api/integrations/accounting/import"
+      }
+    },
+    {
+      "name": "GET /api/audit",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/audit",
+        "description": "GET /api/audit"
+      }
+    },
+    {
+      "name": "GET /api/reports/trial-balance",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/reports/trial-balance",
+        "description": "GET /api/reports/trial-balance"
+      }
+    },
+    {
+      "name": "GET /api/reports/executive-analytics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/reports/executive-analytics",
+        "description": "GET /api/reports/executive-analytics"
+      }
+    },
+    {
+      "name": "GET /api/system/health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/system/health",
+        "description": "GET /api/system/health"
+      }
+    },
+    {
+      "name": "GET /api/system/readiness",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/system/readiness",
+        "description": "GET /api/system/readiness"
+      }
+    },
+    {
+      "name": "GET /api/system/diagnostics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/system/diagnostics",
+        "description": "GET /api/system/diagnostics"
+      }
+    },
+    {
+      "name": "GET /api/system/incidents",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/system/incidents",
+        "description": "GET /api/system/incidents"
+      }
+    },
+    {
+      "name": "POST /api/system/incidents/simulate",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/system/incidents/simulate",
+        "description": "POST /api/system/incidents/simulate",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"LEDGER_IMBALANCE\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "PATCH /api/system/incidents/{id}/resolve",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/system/incidents/{{id}}/resolve",
+        "description": "PATCH /api/system/incidents/:id/resolve",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "PATCH /api/finance/accounts/{id}",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/finance/accounts/{{id}}",
+        "description": "PATCH /api/finance/accounts/:id",
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "DELETE /api/finance/accounts/{id}",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/finance/accounts/{{id}}",
+        "description": "DELETE /api/finance/accounts/:id"
+      }
+    },
+    {
+      "name": "GET /api/notifications",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/notifications",
+        "description": "GET /api/notifications"
+      }
+    },
+    {
+      "name": "GET /api/documents/{type}/{id}/pdf",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/documents/{{type}}/{{id}}/pdf",
+        "description": "Authenticated binary PDF download"
       }
     }
   ]

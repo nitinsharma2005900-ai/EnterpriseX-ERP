@@ -1,0 +1,78 @@
+{
+  "verifiedAt": "2026-11-27T15:16:51.014484+05:30",
+  "repository": "https://github.com/nitinsharma2005900-ai/EnterpriseX-ERP",
+  "deployment": "https://enterprisex-erp.vercel.app",
+  "backend": {
+    "passed": 38,
+    "failed": 0,
+    "database": "real PostgreSQL; isolated migrated test schema",
+    "localDurationSeconds": 196.25
+  },
+  "python": {
+    "passed": 13,
+    "failed": 0
+  },
+  "react": {
+    "passed": 4,
+    "failed": 0
+  },
+  "liveBrowser": {
+    "passed": 6,
+    "failed": 0,
+    "durationSeconds": 54.1,
+    "browser": "Chromium",
+    "baseUrl": "https://enterprisex-erp.vercel.app",
+    "routesChecked": 13,
+    "consoleErrorsInRouteSweep": 0
+  },
+  "productionBuilds": {
+    "backend": "PASSED",
+    "frontend": "PASSED"
+  },
+  "lint": {
+    "backend": "PASSED",
+    "frontend": "PASSED"
+  },
+  "npmAudit": {
+    "backendVulnerabilities": 0,
+    "frontendVulnerabilities": 0
+  },
+  "githubActions": {
+    "runUrl": "https://github.com/nitinsharma2005900-ai/EnterpriseX-ERP/actions/runs/45974492216",
+    "commit": "6ae473a901635d3128390a9b1347a6ee5b6a0a4f",
+    "conclusion": "success",
+    "jobs": 5,
+    "note": "Subsequent release commits are verified by the same required workflow; see the live badge/workflow link."
+  },
+  "backupRestore": {
+    "status": "PASSED",
+    "tables": 31,
+    "rows": 311,
+    "encryptedBackup": "../.backups/EnterpriseX-1795772623503.enc",
+    "restoredToIsolatedSchema": true,
+    "productionDataModified": false
+  },
+  "liveFailureRecovery": {
+    "liveRollback": "PASSED",
+    "inventoryAndLedgerUnchanged": true,
+    "failedJobId": "be43e805-13b3-4fef-8cb1-cbd2572b9515",
+    "transportStatus": "FAILED",
+    "attempts": 4,
+    "transportError": "Email delivery transport is not configured",
+    "controlledRetry": "QUEUED",
+    "diagnosticStatus": "HEALTHY"
+  },
+  "financeBenchmark": {
+    "status": "SUCCESS",
+    "iterations": 5000,
+    "total_time_ms": 167.5,
+    "avg_latency_ms_per_op": 0.0335,
+    "throughput_ops_per_sec": 29850.75,
+    "assessment": "Assessment 05 - Python Finance Processing Benchmark"
+  },
+  "remainingConstraints": [
+    "Outbound email transport is not configured.",
+    "Protected branches are unavailable on this private GitHub Free repository (HTTP 403).",
+    "Free web services sleep and use authenticated HTTPS between services; private web ingress/always-on workers require approved hosting."
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "liveRollback": "PASSED",
+  "inventoryAndLedgerUnchanged": true,
+  "failedJobId": "be43e805-13b3-4fef-8cb1-cbd2572b9515",
+  "transportStatus": "FAILED",
+  "attempts": 4,
+  "transportError": "Email delivery transport is not configured",
+  "controlledRetry": "QUEUED",
+  "diagnosticStatus": "HEALTHY"
+}
